@@ -145,6 +145,8 @@ class EDProxyFrame(wx.Frame):
             self._proxy_server.stop()
             self._netlog_parser.stop()
 
+        event.Skip()
+
 # end of class EDProxyFrame
 class EDProxyApp(wx.App):
     def OnInit(self):
