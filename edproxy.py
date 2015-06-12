@@ -73,6 +73,9 @@ class EDProxyFrame(wx.Frame):
         self._client_list = list()
         self._netlog_parser = None
 
+        self._discovery_service = ednet.EDDiscoveryService("239.45.99.98", 45551)
+        self._discovery_service.add_listener(self.__on_new_message)
+
         self._proxy_server = ednet.EDProxyServer(45550)
         self._proxy_server.add_listener(self.__on_new_client)
 
@@ -96,7 +99,7 @@ class EDProxyFrame(wx.Frame):
 
     def __new_client_thread(self, client, addr):
         while not client.is_initialized():
-            time.sleep(0.5)
+            client.wait_for_initialized(0.5)
 
         if client.get_start_time() is not None:
             edparser.EDNetlogParser.parse_past_logs(self.netlog_path_txt_ctrl.GetValue(),
@@ -119,6 +122,13 @@ class EDProxyFrame(wx.Frame):
 
     def __on_new_client(self, client, addr):
         threading.Thread(target = self.__new_client_thread, args = (client, addr)).start()
+
+    def __on_new_message(self, message):
+        if message.get_type() == ednet.DISCOVERY_SERVICE_TYPE.QUERY:
+            if not message.get_name() or message.get_name() == 'edproxy':
+                self._discovery_service.send(ednet.EDDiscoveryMessageAnnounce('edproxy',
+                                                                              edutils.get_ipaddr(),
+                                                                              45550))
 
     def on_browse(self, event):  # wxGlade: EDProxyFrame.<event_handler>
         dir_path = wx.DirDialog(self, "Choose Netlog Path", style = wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
@@ -167,8 +177,12 @@ class EDProxyFrame(wx.Frame):
                         edutils.set_verbose_enabled(config_path, True)
                         edutils.set_datestamp_enabled(config_path, True)
  
-                    self._proxy_server.start()
                     self._netlog_parser.start(netlog_path)
+                    self._proxy_server.start()
+                    self._discovery_service.start()
+
+                    # Announce to the world that EDProxy is up and running.
+                    self._discovery_service.send(ednet.EDDiscoveryMessageAnnounce('edproxy', edutils.get_ipaddr(), 45550))
 
                     self.stop_button.Enable()
                 else:
@@ -183,21 +197,22 @@ class EDProxyFrame(wx.Frame):
                     self.browse_button.Enable()
                     self.start_button.Enable()
             except:
-                msg = wx.MessageDialog(parent = self,
-                                       message = "Error starting up proxy server. Super generic error huh!? Welp, not really going to do better right now. Lazy, lazy, lazy.",
-                                       caption = "Error starting proxy server",
-                                       style = wx.OK | wx.ICON_ERROR)
-                msg.ShowModal()
-                msg.Destroy()
-
                 self.stop_button.Disable()
 
+                self._discovery_service.stop()
                 self._proxy_server.stop()
                 self._netlog_parser.stop()
 
                 self.netlog_path_txt_ctrl.Enable()
                 self.browse_button.Enable()
                 self.start_button.Enable()
+
+                msg = wx.MessageDialog(parent = self,
+                                       message = "Error starting up proxy server. Super generic error huh!? Welp, not really going to do better right now. Lazy, lazy, lazy.",
+                                       caption = "Error starting proxy server",
+                                       style = wx.OK | wx.ICON_ERROR)
+                msg.ShowModal()
+                msg.Destroy()
         else:
             msg = wx.MessageDialog(parent = self,
                                    message = "Error: Invalid log path specified!",
@@ -211,6 +226,7 @@ class EDProxyFrame(wx.Frame):
     def on_stop(self, event):  # wxGlade: EDProxyFrame.<event_handler>
         self.stop_button.Disable()
 
+        self._discovery_service.stop()
         self._proxy_server.stop()
         self._netlog_parser.stop()
 
@@ -227,6 +243,7 @@ class EDProxyFrame(wx.Frame):
 
     def on_win_close(self, event):
         if self.stop_button.IsEnabled():
+            self._discovery_service.stop()
             self._proxy_server.stop()
             self._netlog_parser.stop()
 

@@ -5,6 +5,7 @@ import threading
 import edutils
 
 from netlogline import *
+from edevent import EDEventQueue
 
 __all__ = [ 'EDNetlogParser' ]
 
@@ -50,19 +51,13 @@ def _parse_date(line):
 class EDNetlogParser():
     def __init__(self, logfile_prefix = "netLog"):
         self._lock = threading.Lock()
+        self._conditional = threading.Condition(self._lock)
         self._running = False
-        self._listener_list = list()
         self._prefix = logfile_prefix
+        self._event_queue = EDEventQueue()
 
-    def add_listener(self, callback, args = (), kwargs = {}):
-        if args is None:
-            args = ()
-        if kwargs is None:
-            kwargs = {}
-
-        self._lock.acquire()
-        self._listener_list.append((callback, args, kwargs))
-        self._lock.release()
+    def add_listener(self, callback, *args, **kwargs):
+        self._event_queue.add_listener(callback, *args, **kwargs)
 
     def get_netlog_prefix(self):
         return self._prefix
@@ -88,10 +83,19 @@ class EDNetlogParser():
         if self.is_running():
             self._lock.acquire()
             self._running = False
+            self._conditional.notify()
             self._lock.release()
 
     @staticmethod
     def parse_past_logs(netlog_path, netlog_prefix, callback, args = (), kwargs = {}, start_time = None):
+        if args is None:
+            args = ()
+        if kwargs is None:
+            kwargs = {}
+
+        eq = EDEventQueue()
+        eq.add_listener(callback, *args, **kwargs)
+
         loglist = _get_log_files(netlog_path, netlog_prefix)
 
         if loglist:
@@ -119,20 +123,16 @@ class EDNetlogParser():
                             if line_time >= start_time:
                                 parsed_line = NetlogLineFactory.get_line(line_time, line)
                                 if parsed_line is not None:
-                                    if args is None:
-                                        args = ()
-                                    if kwargs is None:
-                                        kwargs = {}
-
-                                    newargs = (parsed_line,) + args
-                                    callback(*newargs, **kwargs)
+                                    eq.post(parsed_line)
 
                     logfile.close()
 
     def __run(self, netlog_path):
         while self.is_running():
-            while self.is_running() and not edutils.is_ed_running():
-                time.sleep(2)
+            self._lock.acquire()
+            while self._running and not edutils.is_ed_running():
+                self._conditional.wait(2)
+            self._lock.release()
 
             loglist = _get_log_files(netlog_path, self._prefix)
             if not loglist:
@@ -150,7 +150,9 @@ class EDNetlogParser():
             while self.is_running() and edutils.is_ed_running():
                 line = logfile.readline().rstrip()
                 if not line:
-                    time.sleep(wait_time)
+                    self._lock.acquire()
+                    self._conditional.wait(wait_time)
+                    self._lock.release()
 
                     if wait_time < 2.0:
                         wait_time = wait_time + wait_time
@@ -169,11 +171,7 @@ class EDNetlogParser():
 
                         parsed_line = NetlogLineFactory.get_line(line_time, line)
                         if parsed_line is not None:
-                            self._lock.acquire()
-                            for callback, _args, _kwargs in self._listener_list:
-                                newargs = (parsed_line,) + _args
-                                callback(*newargs, **_kwargs)
-                            self._lock.release()
+                            self._event_queue.post(parsed_line)
 
             logfile.close()
 

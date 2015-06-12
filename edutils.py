@@ -1,6 +1,20 @@
 import os
 import psutil
+import socket
+
 import xml.etree.ElementTree as ET
+
+def get_ipaddr():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.setblocking(0)
+        s.connect(('8.8.8.8',80))
+        ret = s.getsockname()[0]
+        s.close()
+    except:
+        ret = socket.gethostbyname(socket.gethostname())
+
+    return ret
 
 def get_app_dir():
     return os.path.dirname(os.path.realpath(__file__))
@@ -11,7 +25,6 @@ def is_ed_running():
             return True
 
     return False
-
 
 def is_verbose_enabled(path):
     tree = ET.parse(path)
