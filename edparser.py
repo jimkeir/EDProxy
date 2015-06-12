@@ -8,7 +8,7 @@ from netlogline import *
 
 __all__ = [ 'EDNetlogParser' ]
 
-def _get_log_files(path):
+def _get_log_files(path, logfile_prefix):
     if not path:
         raise ValueError("path is empty or None")
 
@@ -19,7 +19,7 @@ def _get_log_files(path):
     _, _, filenames = os.walk(path).next()
 
     for f in filenames:
-        if (f.startswith("netLog.")):
+        if (f.startswith(logfile_prefix)):
             name = datetime.datetime.strptime(f.split(".")[1], "%y%m%d%H%M")
 
             netlog_list.append((name, path + f))
@@ -48,18 +48,24 @@ def _parse_date(line):
 
 
 class EDNetlogParser():
-    def __init__(self):
+    def __init__(self, logfile_prefix = "netLog"):
         self._lock = threading.Lock()
         self._running = False
-        self._notify_map = { NETLOG_LINE_TYPE.SYSTEM:list() }
+        self._listener_list = list()
+        self._prefix = logfile_prefix
 
-    def add_listener(self, line_type, callback):
-        if self._notify_map[line_type] is not None:
-            self._lock.acquire()
-            self._notify_map[line_type].append(callback)
-            self._lock.release()
-        else:
-            raise ValueError("Invalid line type specified.")
+    def add_listener(self, callback, args = (), kwargs = {}):
+        if args is None:
+            args = ()
+        if kwargs is None:
+            kwargs = {}
+
+        self._lock.acquire()
+        self._listener_list.append((callback, args, kwargs))
+        self._lock.release()
+
+    def get_netlog_prefix(self):
+        return self._prefix
 
     def is_running(self):
         self._lock.acquire()
@@ -85,8 +91,8 @@ class EDNetlogParser():
             self._lock.release()
 
     @staticmethod
-    def parse_past_logs(netlog_path, callbacks, start_time = None):
-        loglist = _get_log_files(netlog_path)
+    def parse_past_logs(netlog_path, netlog_prefix, callback, args = (), kwargs = {}, start_time = None):
+        loglist = _get_log_files(netlog_path, netlog_prefix)
 
         if loglist:
             if start_time is None:
@@ -113,9 +119,13 @@ class EDNetlogParser():
                             if line_time >= start_time:
                                 parsed_line = NetlogLineFactory.get_line(line_time, line)
                                 if parsed_line is not None:
-                                    if parsed_line.get_line_type() == NETLOG_LINE_TYPE.SYSTEM:
-                                        if NETLOG_LINE_TYPE.SYSTEM in callbacks:
-                                            callbacks[NETLOG_LINE_TYPE.SYSTEM](parsed_line)
+                                    if args is None:
+                                        args = ()
+                                    if kwargs is None:
+                                        kwargs = {}
+
+                                    newargs = (parsed_line,) + args
+                                    callback(*newargs, **kwargs)
 
                     logfile.close()
 
@@ -124,7 +134,7 @@ class EDNetlogParser():
             while self.is_running() and not edutils.is_ed_running():
                 time.sleep(2)
 
-            loglist = _get_log_files(netlog_path)
+            loglist = _get_log_files(netlog_path, self._prefix)
             if not loglist:
                 raise ValueError("We already checked verbose logging yet no logs!")
 
@@ -159,11 +169,11 @@ class EDNetlogParser():
 
                         parsed_line = NetlogLineFactory.get_line(line_time, line)
                         if parsed_line is not None:
-                            if parsed_line.get_line_type() == NETLOG_LINE_TYPE.SYSTEM:
-                                self._lock.acquire()
-                                for callback in self._notify_map[NETLOG_LINE_TYPE.SYSTEM]:
-                                    callback(parsed_line)
-                                self._lock.release()
+                            self._lock.acquire()
+                            for callback, _args, _kwargs in self._listener_list:
+                                newargs = (parsed_line,) + _args
+                                callback(*newargs, **_kwargs)
+                            self._lock.release()
 
             logfile.close()
 

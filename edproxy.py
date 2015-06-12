@@ -13,6 +13,11 @@ import gettext
 # begin wxGlade: extracode
 # end wxGlade
 
+import os
+import datetime, time
+import threading
+import ConfigParser
+
 import edutils
 import ednet
 import edparser
@@ -37,6 +42,25 @@ class EDProxyFrame(wx.Frame):
         # end wxGlade
 
         self.Bind(wx.EVT_CLOSE, self.on_win_close)
+        
+        configfilename = os.path.join(edutils.get_app_dir(), "edproxy.ini")
+        if os.path.exists(configfilename):
+            config = ConfigParser.SafeConfigParser()
+            config.read(configfilename)
+
+            value = config.get('Paths', 'netlog')
+            
+            self.netlog_path_txt_ctrl.ChangeValue(value)
+        else:
+            config = ConfigParser.SafeConfigParser()
+            config.add_section('Paths')
+            value = "C:\\Program Files (x86)\\Frontier\\EDLaunch\\Products\\FORC-FDEV-D-1010\\Logs"
+            config.set('Paths', 'netlog', value)
+
+            with open(configfilename, 'w') as configfile:
+                config.write(configfile)
+
+            self.netlog_path_txt_ctrl.ChangeValue(value)
 
     def __set_properties(self):
         # begin wxGlade: EDProxyFrame.__set_properties
@@ -45,8 +69,12 @@ class EDProxyFrame(wx.Frame):
         self.stop_button.Enable(False)
         # end wxGlade
 
-        self._netlog_parser = edparser.EDNetlogParser()
-        self._proxy_server = ednet.EDProxyServer(45550, self._netlog_parser)
+        self._lock = threading.Lock()
+        self._client_list = list()
+        self._netlog_parser = None
+
+        self._proxy_server = ednet.EDProxyServer(45550)
+        self._proxy_server.add_listener(self.__on_new_client)
 
     def __do_layout(self):
         # begin wxGlade: EDProxyFrame.__do_layout
@@ -66,65 +94,117 @@ class EDProxyFrame(wx.Frame):
         self.Centre()
         # end wxGlade
 
+    def __new_client_thread(self, client, addr):
+        while not client.is_initialized():
+            time.sleep(0.5)
+
+        if client.get_start_time() is not None:
+            edparser.EDNetlogParser.parse_past_logs(self.netlog_path_txt_ctrl.GetValue(),
+                                                    self._netlog_parser.get_netlog_prefix(),
+                                                    self.__on_sync_parser_event,
+                                                    args = (client,),
+                                                    start_time = client.get_start_time())
+        self._lock.acquire()
+        self._client_list.append(client)
+        self._lock.release()
+
+    def __on_async_parser_event(self, event):
+        self._lock.acquire()
+        for client in self._client_list:
+            client.send(event)
+        self._lock.release()
+
+    def __on_sync_parser_event(self, event, client):
+        client.send(event)
+
+    def __on_new_client(self, client, addr):
+        threading.Thread(target = self.__new_client_thread, args = (client, addr)).start()
+
     def on_browse(self, event):  # wxGlade: EDProxyFrame.<event_handler>
         dir_path = wx.DirDialog(self, "Choose Netlog Path", style = wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
 
         if dir_path.ShowModal() == wx.ID_OK:
             self.netlog_path_txt_ctrl.ChangeValue(dir_path.GetPath())
 
+            configfilename = os.path.join(edutils.get_app_dir(), "edproxy.ini")
+            config = ConfigParser.SafeConfigParser()
+            config.read(configfilename)
+            config.set('Paths', 'netlog', dir_path.GetPath())
+
+            with open(configfilename, 'w') as configfile:
+                config.write(configfile)
+
         dir_path.Destroy()
 
         event.Skip()
 
     def on_start(self, event):  # wxGlade: EDProxyFrame.<event_handler>
-        self.start_button.Disable()
-        self.browse_button.Disable()
-        self.netlog_path_txt_ctrl.Disable()
+        netlog_path = self.netlog_path_txt_ctrl.GetValue()
+        if netlog_path and os.path.exists(netlog_path):
+            self.start_button.Disable()
+            self.browse_button.Disable()
+            self.netlog_path_txt_ctrl.Disable()
 
-        try:
-            # Need to verify/find verbose logging xml
-            # Need to automatically update xml IF ED *not* running.
-            # If it is running then prompt user to close ED and try again.
-            # If can't find it then prompt user for path?
+            try:
+                config_path, _ = os.path.split(os.path.normpath(netlog_path))
+                config_path = os.path.join(config_path, "AppConfig.xml")
 
-            # Find xml here
+                if os.path.exists(config_path):
+                    if self._netlog_parser is None:
+                        self._netlog_parser = edparser.EDNetlogParser(logfile_prefix = edutils.get_logfile_prefix(config_path))
 
-            # Verify xml here
-            print "Verify xml needs update here."
-            needs_verbose_flag = False #True
+                        self._netlog_parser.add_listener(self.__on_async_parser_event)
 
-            if needs_verbose_flag:
-                while edutils.is_ed_running():
+                    if not edutils.is_verbose_enabled(config_path):
+                        while edutils.is_ed_running():
+                            msg = wx.MessageDialog(parent = self,
+                                                   message = "Elite: Dangerous is currently running and Verbose logging will not take effect until Elite: Dangerous is restarted. Please shutdown Elite: Dangerous before continuing.",
+                                                   caption = "Verbose Logging Setup Error",
+                                                   style = wx.OK | wx.ICON_EXCLAMATIONN)
+                            msg.ShowModal()
+                            msg.Destroy()
+
+                        edutils.set_verbose_enabled(config_path, True)
+                        edutils.set_datestamp_enabled(config_path, True)
+ 
+                    self._proxy_server.start()
+                    self._netlog_parser.start(netlog_path)
+
+                    self.stop_button.Enable()
+                else:
                     msg = wx.MessageDialog(parent = self,
-                                           message = "Elite: Dangerous is currently running and Verbose logging will not take effect until Elite: Dangerous is restarted. Please shutdown Elite: Dangerous before continuing.",
-                                           caption = "Verbose Logging Setup Error",
-                                           style = wx.OK | wx.ICON_EXCLAMATIONN)
+                                           message = "Error: Cannot find E:D configuration file!",
+                                           caption = "Error starting proxy server",
+                                           style = wx.OK | wx.ICON_ERROR)
                     msg.ShowModal()
                     msg.Destroy()
 
-                # Update xml here
-                print "Update XML here"
+                    self.netlog_path_txt_ctrl.Enable()
+                    self.browse_button.Enable()
+                    self.start_button.Enable()
+            except:
+                msg = wx.MessageDialog(parent = self,
+                                       message = "Error starting up proxy server. Super generic error huh!? Welp, not really going to do better right now. Lazy, lazy, lazy.",
+                                       caption = "Error starting proxy server",
+                                       style = wx.OK | wx.ICON_ERROR)
+                msg.ShowModal()
+                msg.Destroy()
 
-            self._netlog_parser.start(self.netlog_path_txt_ctrl.GetValue())
-            self._proxy_server.start(self.netlog_path_txt_ctrl.GetValue())
+                self.stop_button.Disable()
 
-            self.stop_button.Enable()
-        except:
+                self._proxy_server.stop()
+                self._netlog_parser.stop()
+
+                self.netlog_path_txt_ctrl.Enable()
+                self.browse_button.Enable()
+                self.start_button.Enable()
+        else:
             msg = wx.MessageDialog(parent = self,
-                                   message = "Error starting up proxy server. Super generic error huh!? Welp, not really going to do better right now. Lazy, lazy, lazy.",
+                                   message = "Error: Invalid log path specified!",
                                    caption = "Error starting proxy server",
                                    style = wx.OK | wx.ICON_ERROR)
             msg.ShowModal()
             msg.Destroy()
-
-            self.stop_button.Disable()
-
-            self._proxy_server.stop()
-            self._netlog_parser.stop()
-
-            self.netlog_path_txt_ctrl.Enable()
-            self.browse_button.Enable()
-            self.start_button.Enable()
             
         event.Skip()
 
@@ -133,6 +213,11 @@ class EDProxyFrame(wx.Frame):
 
         self._proxy_server.stop()
         self._netlog_parser.stop()
+
+        self._lock.acquire()
+        for client in self._client_list:
+            client.close()
+        self._lock.release()
 
         self.netlog_path_txt_ctrl.Enable()
         self.browse_button.Enable()
@@ -144,6 +229,11 @@ class EDProxyFrame(wx.Frame):
         if self.stop_button.IsEnabled():
             self._proxy_server.stop()
             self._netlog_parser.stop()
+
+            self._lock.acquire()
+            for client in self._client_list:
+                client.close()
+            self._lock.release()
 
         event.Skip()
 
