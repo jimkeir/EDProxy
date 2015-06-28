@@ -36,7 +36,8 @@ class _NetlogLine():
     def _get_json_header(self):
         ret = dict()
         
-        ret['Date'] = self._time.isoformat()
+        ret['Date'] = self._time.strftime('%Y-%m-%d %H:%M:%S')
+        # ret['Date'] = self._time.isoformat()
         ret['Type'] = str(self.get_line_type())
 
         return ret

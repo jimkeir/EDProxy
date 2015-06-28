@@ -32,7 +32,7 @@ class _EDThreadPool(object):
     def add_task(self, func, *args, **kwargs):
         self._task_queue.put((func, args, kwargs))
 
-_thread_pool = _EDThreadPool(5)
+_thread_pool = _EDThreadPool(1)
 def _get_thread_pool():
     return _thread_pool
 

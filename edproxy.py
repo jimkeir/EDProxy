@@ -98,8 +98,11 @@ class EDProxyFrame(wx.Frame):
         # end wxGlade
 
     def __new_client_thread(self, client, addr):
-        while not client.is_initialized():
-            client.wait_for_initialized(0.5)
+        while not client.is_initialized() and client.is_running():
+            try:
+                client.wait_for_initialized(0.5)
+            except ednet.TimeoutException:
+                print "Timeout waiting for initialized. Try again."
 
         if client.get_start_time() is not None:
             edparser.EDNetlogParser.parse_past_logs(self.netlog_path_txt_ctrl.GetValue(),
@@ -125,6 +128,7 @@ class EDProxyFrame(wx.Frame):
 
     def __on_new_message(self, message):
         if message.get_type() == ednet.DISCOVERY_SERVICE_TYPE.QUERY:
+            print message
             if not message.get_name() or message.get_name() == 'edproxy':
                 self._discovery_service.send(ednet.EDDiscoveryMessageAnnounce('edproxy',
                                                                               edutils.get_ipaddr(),
