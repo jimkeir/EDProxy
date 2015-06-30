@@ -62,7 +62,49 @@ Example:
     "name": "edproxy"
 }
 ```
-*Work In Progress*
+
+## Network Commands and Events ##
+### Init Command ###
+```
+{
+   "Type": "Init"
+   "StartTime": "all" | "now" | "yyyy-mm-ddTHH:MM:SS" (local time)
+   "Register": [ "System" ]
+}
+```
+
+Example:
+``` json
+{
+   "Type": "Init"
+   "StartTime": "2015-06-29T13:25:21"
+   "Register": [ "System" ]
+}
+```
+
+### System Event ###
+```
+{
+    "Type": "System"
+    "Date": "yyyy-mm-ddTHH:MM:SS" (local time)
+    "System": "System name"
+    "Bodies": Number of Bodies known in System
+    "Position": (x, y, z) Coordinates of ship location in system
+    "Status": Ship status [ "unknown" | "cruising" ]
+}
+```
+
+Example:
+``` json
+{
+    "Type": "System"
+    "Date": "2015-06-29T13:01:21"
+    "System": "Sol"
+    "Bodies": 7
+    "Position": [ -1234.56, 1234.56, 8765.87 ]
+    "Status": "cruising"
+}
+```
 
 ## Contact ###
 
