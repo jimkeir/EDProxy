@@ -108,4 +108,4 @@ Example:
 
 ## Contact ###
 
-* Author [Weston Boyd](mailto://Weston.Boyd@fussyware.com)
+* Author [Weston Boyd](mailto://gen.fussypants@gmail.com)
