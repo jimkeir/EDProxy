@@ -29,13 +29,39 @@ Currently the only log file line being fully parsed is the System tag lines. The
 # API #
 ## Discovery API ##
 ### Announce ###
-```json
+```
 {
-    type: Announce | Query
-    name: Service Name (optional)
+    "type": "Announce"
+    "name": "Service Name"
+    "ipv4": "IP Address"
+    "port": Port number
 }
-`
+```
 
+Example:
+``` json
+{
+    "type": "Announce"
+    "name": "edproxy"
+    "ipv4": "192.168.1.100"
+    "port": 45551
+}
+```
+### Query ###
+```
+{
+    "type": "Query"
+    "name": "Service Name" (optional)
+}
+```
+
+Example:
+``` json
+{
+    "type": "Query"
+    "name": "edproxy"
+}
+```
 *Work In Progress*
 
 ## Contact ###
