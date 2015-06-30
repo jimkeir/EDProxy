@@ -11,8 +11,6 @@ Replicates the netLog entries (currently System line only) out to any registered
 An all-in-one package is currently being worked on.
 
 # Design #
-*Work In Progress*
-
 **edproxy** is currently three main components: ED Discovery, ED Netlog Parser, and ED Network. ED Discovery is a new application discovery tool so that applications may find **edproxy** dynamically. ED Netlog Parser is the main component that parses the Elite: Dangerous netLog into event-able messages. ED Network takes in messages and sends out JSON events to all registered listeners.
 
 ### ED Discovery ###
@@ -31,7 +29,7 @@ Currently the only log file line being fully parsed is the System tag lines. The
 # API #
 ## Discovery API ##
 ### Announce ###
-``` json
+```json
 {
     type: Announce | Query
     name: Service Name (optional)
