@@ -27,6 +27,7 @@ class EDProxyFrame(wx.Frame):
         # begin wxGlade: EDProxyFrame.__init__
         kwds["style"] = wx.CAPTION | wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.CLIP_CHILDREN
         wx.Frame.__init__(self, *args, **kwds)
+
         self.label_1 = wx.StaticText(self, wx.ID_ANY, _("Netlog Path:"), style=wx.ST_NO_AUTORESIZE)
         self.netlog_path_txt_ctrl = wx.TextCtrl(self, wx.ID_ANY, _("/home/wes/src/edproxy/logs"))
         self.browse_button = wx.Button(self, wx.ID_ANY, _("Browse"))
@@ -68,6 +69,8 @@ class EDProxyFrame(wx.Frame):
         self.netlog_path_txt_ctrl.SetMinSize((467, 29))
         self.stop_button.Enable(False)
         # end wxGlade
+
+        self.SetIcon(wx.Icon('edicon.ico', wx.BITMAP_TYPE_ICO))
 
         self._lock = threading.Lock()
         self._client_list = list()
