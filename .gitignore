@@ -3,3 +3,5 @@
 *.xml
 *.ini
 /logs/
+/build/
+/dist/

@@ -21,8 +21,12 @@ def get_app_dir():
 
 def is_ed_running():
     for p in psutil.process_iter():
-        if p.name().lower().startswith("elitedangerous"):
-            return True
+        try:
+            pinfo = p.as_dict(attrs = ['pid', 'name'])
+            if p.name().lower().startswith("elitedangerous"):
+                return True
+        except psutil.NoSuchProcess:
+            pass
 
     return False
 
