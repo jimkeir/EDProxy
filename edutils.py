@@ -23,7 +23,7 @@ def is_ed_running():
     for p in psutil.process_iter():
         try:
             pinfo = p.as_dict(attrs = ['pid', 'name'])
-            if p.name().lower().startswith("elitedangerous"):
+            if pinfo['name'] and pinfo['name'].lower().startswith("elitedangerous"):
                 return True
         except psutil.NoSuchProcess:
             pass
