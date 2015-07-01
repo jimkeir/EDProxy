@@ -3,12 +3,17 @@
 Replicates the netLog entries (currently System line only) out to any registered listeners via TCP so that an application may run on other platforms. The proxy server will automatically update the E:D configuration to turn on verbose logging.
 
 # Installation #
-## Prerequisites ##
+## Prerequisites for Running Source##
 * [Python 2.7](https://www.python.org/download/releases/2.7/)
 * [wxPython](http://www.wxpython.org/download.php)
 * [psutil](https://github.com/giampaolo/psutil)
 
 An all-in-one package is currently being worked on.
+
+## Download ##
+Windows: [32-bit](https://bitbucket.org/westokyo/edproxy/downloads/edproxy-1.0.0.zip)
+
+Note: MacOSX should be possible. Someone with a Mac will need to run pyinstaller on the source to generate a binary package.
 
 # Design #
 **edproxy** is currently three main components: ED Discovery, ED Netlog Parser, and ED Network. ED Discovery is a new application discovery tool so that applications may find **edproxy** dynamically. ED Netlog Parser is the main component that parses the Elite: Dangerous netLog into event-able messages. ED Network takes in messages and sends out JSON events to all registered listeners.
