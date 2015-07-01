@@ -8,8 +8,6 @@ Replicates the netLog entries (currently System line only) out to any registered
 * [wxPython](http://www.wxpython.org/download.php)
 * [psutil](https://github.com/giampaolo/psutil)
 
-An all-in-one package is currently being worked on.
-
 ## Download ##
 Windows: [32-bit](https://bitbucket.org/westokyo/edproxy/downloads/edproxy-1.0.0.zip)
 
