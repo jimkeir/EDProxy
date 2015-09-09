@@ -169,7 +169,6 @@ class EDProxyFrame(wx.Frame):
                 if os.path.exists(config_path):
                     if self._netlog_parser is None:
                         self._netlog_parser = edparser.EDNetlogParser(logfile_prefix = edutils.get_logfile_prefix(config_path))
-
                         self._netlog_parser.add_listener(self.__on_async_parser_event)
 
                     if not edutils.is_verbose_enabled(config_path):
@@ -183,7 +182,7 @@ class EDProxyFrame(wx.Frame):
 
                         edutils.set_verbose_enabled(config_path, True)
                         edutils.set_datestamp_enabled(config_path, True)
- 
+
                     self._netlog_parser.start(netlog_path)
                     self._proxy_server.start()
                     self._discovery_service.start()
@@ -208,7 +207,9 @@ class EDProxyFrame(wx.Frame):
 
                 self._discovery_service.stop()
                 self._proxy_server.stop()
-                self._netlog_parser.stop()
+
+                if self._netlog_parser is not None:
+                    self._netlog_parser.stop()
 
                 self.netlog_path_txt_ctrl.Enable()
                 self.browse_button.Enable()
