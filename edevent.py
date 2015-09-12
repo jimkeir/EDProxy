@@ -1,6 +1,6 @@
 import threading
 
-from Queue import Queue, Empty
+from Queue import Queue
 
 class _EDThreadWorker(threading.Thread):
     def __init__(self, task_queue):

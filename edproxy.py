@@ -14,7 +14,7 @@ import gettext
 # end wxGlade
 
 import os
-import datetime, time
+#import datetime, time
 import threading
 import ConfigParser
 
@@ -176,7 +176,7 @@ class EDProxyFrame(wx.Frame):
                             msg = wx.MessageDialog(parent = self,
                                                    message = "Elite: Dangerous is currently running and Verbose logging will not take effect until Elite: Dangerous is restarted. Please shutdown Elite: Dangerous before continuing.",
                                                    caption = "Verbose Logging Setup Error",
-                                                   style = wx.OK | wx.ICON_EXCLAMATIONN)
+                                                   style = wx.OK | wx.ICON_EXCLAMATION)
                             msg.ShowModal()
                             msg.Destroy()
 

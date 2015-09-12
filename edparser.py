@@ -1,10 +1,10 @@
 import os
-import datetime, time
+import datetime
 import threading
 
 import edutils
 
-from netlogline import *
+from netlogline import NetlogLineFactory
 from edevent import EDEventQueue
 
 __all__ = [ 'EDNetlogParser' ]

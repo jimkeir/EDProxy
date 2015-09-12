@@ -1,14 +1,11 @@
 import socket, select
 import json
 import datetime
-import threading
 import struct
 
-from Queue import Queue, Empty
+from Queue import Empty
 
 from edevent import *
-from edparser import *
-from netlogline import *
 
 #class EDServiceBase():
 #
@@ -156,7 +153,7 @@ class EDDiscoveryService():
                 rr = None
 
             if rr:
-                data, address = self._sock.recvfrom(1024)
+                data, _ = self._sock.recvfrom(1024)
 
                 if data:
                     try:
@@ -170,7 +167,7 @@ class EDDiscoveryService():
                     self._lock.release()
 
         try:
-            self._sock.shutdown(socket.RDRW)
+            self._sock.shutdown(socket.SHUT_RDWR)
             self._sock.close()
         except:
             pass
@@ -234,7 +231,6 @@ class EDProxyServer():
         self._conditional.notify()
         self._lock.release()
 
-        client_list = list()
         while self.is_running():
             try:
                 rr, _, _ = select.select([sock], [], [], 0.5)

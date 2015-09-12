@@ -63,22 +63,22 @@ class _SystemLine(_NetlogLine):
     def parse_netlog_line(cls, line_time, line):
         if (line.startswith("System:")):
             try:
-                b, sep, line = line.partition("(")
-                b, sep, line = line.partition("Body:")
+                b, _, line = line.partition("(")
+                b, _, line = line.partition("Body:")
                 system = b[:len(b) - 2]
-            except ValueError, e:
+            except ValueError:
                 return None
 
             try:
-                b, sep, line = line.partition("Pos:(")
+                b, _, line = line.partition("Pos:(")
                 body = int(b)
-            except ValueError, e:
+            except ValueError:
                 body = 0
 
             try:
-                b, sep, line = line.partition(")")
+                b, _, line = line.partition(")")
                 pos = tuple(float(f) for f in b.split(","))
-            except ValueError, e:
+            except ValueError:
                 pos = (0.0, 0.0, 0.0)
             
             try:
@@ -88,7 +88,7 @@ class _SystemLine(_NetlogLine):
                     status = NETLOG_SHIP_STATUS.CRUISING
                 else:
                     status = NETLOG_SHIP_STATUS.UNKNOWN
-            except ValueError, e:
+            except ValueError:
                 status = NETLOG_SHIP_STATUS.UNKNOWN
 
             return cls(line_time, system, num_bodies = body, position = pos, ship_status = status)
