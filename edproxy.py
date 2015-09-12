@@ -13,10 +13,10 @@ import gettext
 # begin wxGlade: extracode
 # end wxGlade
 
-import os
-#import datetime, time
+import os, sys
 import threading
 import ConfigParser
+import logging
 
 import edutils
 import ednet
@@ -24,6 +24,9 @@ import edparser
 
 class EDProxyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
+        self.log = logging.getLogger("com.fussyware.edproxy");
+        self.log.setLevel(logging.DEBUG)
+        
         # begin wxGlade: EDProxyFrame.__init__
         kwds["style"] = wx.CAPTION | wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.CLIP_CHILDREN
         wx.Frame.__init__(self, *args, **kwds)
@@ -33,6 +36,8 @@ class EDProxyFrame(wx.Frame):
         self.browse_button = wx.Button(self, wx.ID_ANY, _("Browse"))
         self.start_button = wx.Button(self, wx.ID_ANY, _("Start"))
         self.stop_button = wx.Button(self, wx.ID_ANY, _("Stop"))
+        
+        self.client_listview = wx.ListView(self, style = wx.LC_REPORT | wx.BORDER_SUNKEN)
 
         self.__set_properties()
         self.__do_layout()
@@ -68,6 +73,8 @@ class EDProxyFrame(wx.Frame):
         self.SetTitle(_("Elite: Dangerous Netlog Proxy"))
         self.netlog_path_txt_ctrl.SetMinSize((467, 29))
         self.stop_button.Enable(False)
+        self.client_listview.InsertColumn(0, "Connected IP Address", width = wx.LIST_AUTOSIZE_USEHEADER)
+        self.client_listview.InsertColumn(1, "Port", width = wx.LIST_AUTOSIZE)
         # end wxGlade
 
         self.SetIcon(wx.Icon('edicon.ico', wx.BITMAP_TYPE_ICO))
@@ -91,6 +98,7 @@ class EDProxyFrame(wx.Frame):
         sizer_4.Add(self.netlog_path_txt_ctrl, 1, 0, 0)
         sizer_4.Add(self.browse_button, 0, wx.ALIGN_RIGHT, 0)
         sizer_3.Add(sizer_4, 1, wx.EXPAND, 0)
+        sizer_3.Add(self.client_listview, 0, wx.ALL | wx.EXPAND, 0)
         sizer_5.Add(self.start_button, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 0)
         sizer_5.Add(self.stop_button, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 0)
         sizer_3.Add(sizer_5, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 2)
@@ -105,7 +113,7 @@ class EDProxyFrame(wx.Frame):
             try:
                 client.wait_for_initialized(0.5)
             except ednet.TimeoutException:
-                print "Timeout waiting for initialized. Try again."
+                self.log.debug("Timeout waiting for initialized. Try again.")
 
         if client.get_start_time() is not None:
             edparser.EDNetlogParser.parse_past_logs(self.netlog_path_txt_ctrl.GetValue(),
@@ -127,11 +135,13 @@ class EDProxyFrame(wx.Frame):
         client.send(event)
 
     def __on_new_client(self, client, addr):
+        self.log.info("New remote client at [%s] connected", addr)
+        self.client_listview.Append([ addr[0], addr[1] ])
         threading.Thread(target = self.__new_client_thread, args = (client, addr)).start()
 
     def __on_new_message(self, message):
         if message.get_type() == ednet.DISCOVERY_SERVICE_TYPE.QUERY:
-            print message
+            self.log.debug("Received new discovery query message [%s]", message)
             if not message.get_name() or message.get_name() == 'edproxy':
                 self._discovery_service.send(ednet.EDDiscoveryMessageAnnounce('edproxy',
                                                                               edutils.get_ipaddr(),
@@ -203,6 +213,8 @@ class EDProxyFrame(wx.Frame):
                     self.browse_button.Enable()
                     self.start_button.Enable()
             except:
+                self.log.error("There was an error starting the proxy.", exc_info = sys.exc_info())
+                
                 self.stop_button.Disable()
 
                 self._discovery_service.stop()
@@ -275,6 +287,12 @@ class EDProxyApp(wx.App):
 
 if __name__ == "__main__":
     gettext.install("edproxy") # replace with the appropriate catalog name
-
+  
+    user_dir = os.path.expanduser("~")
+    if not os.path.exists(user_dir + "/.edproxy"):
+        os.makedirs(user_dir + "/.edproxy")
+ 
+    logging.basicConfig(format = "%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s", filename = user_dir + "/.edproxy/edproxy.log")
+  
     edproxy = EDProxyApp(0)
     edproxy.MainLoop()

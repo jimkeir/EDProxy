@@ -1,6 +1,7 @@
 import os
 import datetime
 import threading
+import logging
 
 import edutils
 
@@ -50,6 +51,8 @@ def _parse_date(line):
 
 class EDNetlogParser():
     def __init__(self, logfile_prefix = "netLog"):
+        self.log = logging.getLogger("com.fussyware.edproxy")
+
         self._lock = threading.Lock()
         self._conditional = threading.Condition(self._lock)
         self._running = False
@@ -175,6 +178,8 @@ class EDNetlogParser():
 
             logfile.close()
 
+        self.log.info("Exiting netlog parser thread.")
+        
         self._lock.acquire()
         self._running = False
         self._lock.release()

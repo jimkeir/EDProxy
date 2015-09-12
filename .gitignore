@@ -2,6 +2,7 @@
 *~
 *.xml
 *.ini
+edproxy.spec
 .project
 .pydevproject
 /logs/

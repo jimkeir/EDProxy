@@ -6,6 +6,8 @@ import struct
 from Queue import Empty
 
 from edevent import *
+import logging
+import sys
 
 #class EDServiceBase():
 #
@@ -79,6 +81,8 @@ class EDDiscoveryMessageQuery(EDDiscoveryMessageBase):
 
 class EDDiscoveryService():
     def __init__(self, broadcast_addr, broadcast_port):
+        self.log = logging.getLogger("com.fussyware.edproxy")
+        
         self._broadcast_addr = broadcast_addr
         self._broadcast_port = broadcast_port
 
@@ -121,9 +125,10 @@ class EDDiscoveryService():
 
     def send(self, message):
         try:
+            self.log.debug("Sending message [%s]", message)
             self._sock.sendto(message.get_json(), (self._broadcast_addr, self._broadcast_port))
-        except Exception, e:
-            print "Failed send: ", e
+        except Exception:
+            self.log.error("Failed sending data.", exc_info = sys.exc_info())
         
     def __run(self):
         group = socket.inet_aton(self._broadcast_addr)
@@ -179,6 +184,8 @@ class EDDiscoveryService():
 
 class EDProxyServer():
     def __init__(self, port):
+        self.log = logging.getLogger("com.fussyware.edproxy")
+        
         self._running = False
         self._initialized = False
         self._lock = threading.Lock()
@@ -237,8 +244,8 @@ class EDProxyServer():
                 if rr:
                     client, addr = sock.accept()
                     self._event_queue.post(EDProxyClient(client), addr)
-            except Exception, e:
-                print "Exception in server layer.", e
+            except Exception:
+                self.log.error("Exception in server layer.", exc_info = sys.exc_info())
                 self._lock.acquire()
                 self._running = False
                 self._lock.release()
@@ -249,6 +256,8 @@ class EDProxyServer():
         except:
             pass
 
+        self.log.info("Exiting proxy server listen thread.")
+    
         self._lock.acquire()
         self._running = False
         self._initialized = False
@@ -256,6 +265,8 @@ class EDProxyServer():
 
 class EDProxyClient():
     def __init__(self, sock):
+        self.log = logging.getLogger("com.fussyware.edproxy")
+        
         self._running = True
         self._initialized = False
 
@@ -373,6 +384,8 @@ class EDProxyClient():
         except:
             pass
 
+        self.log.info("Exiting proxy client read thread.")
+        
         self._lock.acquire()
         self._running = False
         self._lock.release()
