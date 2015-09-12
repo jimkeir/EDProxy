@@ -2,6 +2,8 @@
 *~
 *.xml
 *.ini
+.project
+.pydevproject
 /logs/
 /build/
 /dist/
