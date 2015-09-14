@@ -19,6 +19,9 @@ def get_ipaddr():
 def get_app_dir():
     return os.path.dirname(os.path.realpath(__file__))
 
+def get_user_dir():
+    return os.path.dirname(os.path.expanduser("~"))
+
 def is_ed_running():
     for p in psutil.process_iter():
         try:

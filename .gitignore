@@ -2,9 +2,12 @@
 *~
 *.xml
 *.ini
+*.bmp
+*.png
 edproxy.spec
 .project
 .pydevproject
 /logs/
 /build/
 /dist/
+/testbed/

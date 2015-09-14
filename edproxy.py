@@ -21,6 +21,7 @@ import logging
 import edutils
 import ednet
 import edparser
+import edconfig
 
 class EDProxyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
@@ -31,6 +32,13 @@ class EDProxyFrame(wx.Frame):
         kwds["style"] = wx.CAPTION | wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.CLIP_CHILDREN
         wx.Frame.__init__(self, *args, **kwds)
 
+        menu_bar = wx.MenuBar()
+        settings_menu = wx.Menu()
+        netlog_menu = settings_menu.Append(1234, "Setup Netlog", "Setup the Netlog paths.")
+        image_menu = settings_menu.Append(1235, "Setup Image", "Setup image acquisition")
+        menu_bar.Append(settings_menu, "Settings")
+        self.SetMenuBar(menu_bar)
+        
         self.label_1 = wx.StaticText(self, wx.ID_ANY, _("Netlog Path:"), style=wx.ST_NO_AUTORESIZE)
         self.netlog_path_txt_ctrl = wx.TextCtrl(self, wx.ID_ANY, _("/home/wes/src/edproxy/logs"))
         self.browse_button = wx.Button(self, wx.ID_ANY, _("Browse"))
@@ -42,6 +50,8 @@ class EDProxyFrame(wx.Frame):
         self.__set_properties()
         self.__do_layout()
 
+        self.Bind(wx.EVT_MENU, self._on_netlog_menu, netlog_menu)
+        self.Bind(wx.EVT_MENU, self._on_image_menu, image_menu)
         self.Bind(wx.EVT_BUTTON, self.on_browse, self.browse_button)
         self.Bind(wx.EVT_BUTTON, self.on_start, self.start_button)
         self.Bind(wx.EVT_BUTTON, self.on_stop, self.stop_button)
@@ -49,24 +59,8 @@ class EDProxyFrame(wx.Frame):
 
         self.Bind(wx.EVT_CLOSE, self.on_win_close)
         
-        configfilename = os.path.join(edutils.get_app_dir(), "edproxy.ini")
-        if os.path.exists(configfilename):
-            config = ConfigParser.SafeConfigParser()
-            config.read(configfilename)
-
-            value = config.get('Paths', 'netlog')
-            
-            self.netlog_path_txt_ctrl.ChangeValue(value)
-        else:
-            config = ConfigParser.SafeConfigParser()
-            config.add_section('Paths')
-            value = "C:\\Program Files (x86)\\Frontier\\EDLaunch\\Products\\FORC-FDEV-D-1010\\Logs"
-            config.set('Paths', 'netlog', value)
-
-            with open(configfilename, 'w') as configfile:
-                config.write(configfile)
-
-            self.netlog_path_txt_ctrl.ChangeValue(value)
+        self._edconfig = edconfig.EDConfig()
+        self.netlog_path_txt_ctrl.ChangeValue(self._edconfig.get_netlog_path())
 
     def __set_properties(self):
         # begin wxGlade: EDProxyFrame.__set_properties
@@ -108,6 +102,12 @@ class EDProxyFrame(wx.Frame):
         self.Centre()
         # end wxGlade
 
+    def _on_netlog_menu(self, event):
+        print "Got netlog menu"
+    
+    def _on_image_menu(self, event):
+        print "Got image menu"
+    
     def __new_client_thread(self, client, addr):
         while not client.is_initialized() and client.is_running():
             try:
