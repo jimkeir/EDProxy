@@ -173,7 +173,7 @@ Example:
 Example:
 ``` json
 {
-    "Type": "System"
+    "Type": "Import"
     "Date": "2015-06-29T13:01:21"
     "System": "Sol"
     "Position": [ 0.00, 0.00, 0.00 ]
