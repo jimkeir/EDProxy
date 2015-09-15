@@ -62,11 +62,13 @@ class _ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """ Handle requests for HTTP server in a thread."""
 
 class EDPictureMonitor(PatternMatchingEventHandler):
-    def __init__(self, path):
+    def __init__(self, path = ''):
         PatternMatchingEventHandler.__init__(self, patterns = [ "*.bmp" ], ignore_directories = True)
 
-        self._path = path        
-        _http_root_paths.append(path)
+        self._path = path    
+        
+        if len(path) > 0:    
+            _http_root_paths.append(path)
         
         self.log = logging.getLogger("com.fussyware.edproxy")
         self.log.setLevel(logging.DEBUG)
@@ -82,6 +84,9 @@ class EDPictureMonitor(PatternMatchingEventHandler):
     def add_listener(self, callback, *args, **kwargs):
         self._event_queue.add_listener(callback, *args, **kwargs)
 
+    def is_started(self):
+        return (self._observer != None)
+    
     def set_convert_format(self, image_format):
         self._convert_format = image_format
         
@@ -102,6 +107,9 @@ class EDPictureMonitor(PatternMatchingEventHandler):
         
     def set_image_path(self, path):
         self._path = path
+
+        if len(path) > 0 and not path in _http_root_paths:    
+            _http_root_paths.append(path)
         
     def get_convert_format(self):
         return self._convert_format

@@ -67,7 +67,7 @@ class EDProxyFrame(wx.Frame):
 
     def __set_properties(self):
         # begin wxGlade: EDProxyFrame.__set_properties
-        self.SetTitle(_("Elite: Dangerous Netlog Proxy"))
+        self.SetTitle(_("Elite: Dangerous Proxy"))
 #         self.SetIcon(wx.Icon('edicon.ico', wx.BITMAP_TYPE_ICO))
         self.stop_button.Enable(False)
         self.client_listview.InsertColumn(0, "Connected IP Address", width = wx.LIST_AUTOSIZE_USEHEADER)
@@ -76,8 +76,12 @@ class EDProxyFrame(wx.Frame):
 
         self._lock = threading.Lock()
         self._client_list = list()
-        self._netlog_parser = None
-        self._edpicture = None
+        
+        self._netlog_parser = edparser.EDNetlogParser()
+        self._netlog_parser.add_listener(self.__on_async_parser_event)
+        
+        self._edpicture = edpicture.EDPictureMonitor()
+        self._edpicture.add_listener(self.__on_new_image)        
 
         self._discovery_service = ednet.EDDiscoveryService("239.45.99.98", 45551)
         self._discovery_service.add_listener(self.__on_new_message)
@@ -104,13 +108,8 @@ class EDProxyFrame(wx.Frame):
             self._discovery_service.stop()
             self._proxy_server.stop()
             self._netlog_parser.stop()
-            
-            if self._edpicture:
-                self._edpicture.stop()
+            self._edpicture.stop()
 
-            self._netlog_parser = None
-            self._edpicture = None
-            
             self._lock.acquire()
             for client in self._client_list:
                 client.close()
@@ -154,9 +153,8 @@ class EDProxyFrame(wx.Frame):
 
     def __on_async_parser_event(self, event):
         if event.get_line_type() == netlogline.NETLOG_LINE_TYPE.SYSTEM:
-            if self._edpicture:
-                self._edpicture.set_name_replacement(event.get_name())
-                self._edconfig.set_image_name_replacement(event.get_name())
+            self._edpicture.set_name_replacement(event.get_name())
+            self._edconfig.set_image_name_replacement(event.get_name())
                 
         self._lock.acquire()
         for client in self._client_list:
@@ -196,9 +194,7 @@ class EDProxyFrame(wx.Frame):
                 config_path = os.path.join(config_path, "AppConfig.xml")
 
                 if os.path.exists(config_path):
-                    if self._netlog_parser is None:
-                        self._netlog_parser = edparser.EDNetlogParser(logfile_prefix = edutils.get_logfile_prefix(config_path))
-                        self._netlog_parser.add_listener(self.__on_async_parser_event)
+                    self._netlog_parser.set_netlog_prefix(edutils.get_logfile_prefix(config_path))
 
                     if not edutils.is_verbose_enabled(config_path):
                         while edutils.is_ed_running():
@@ -213,8 +209,7 @@ class EDProxyFrame(wx.Frame):
                         edutils.set_datestamp_enabled(config_path, True)
 
                     if os.path.exists(self._edconfig.get_image_path()):
-                        self._edpicture = edpicture.EDPictureMonitor(self._edconfig.get_image_path())
-                        self._edpicture.add_listener(self.__on_new_image)
+                        self._edpicture.set_image_path(self._edconfig.get_image_path())
                         self._edpicture.set_convert_format(self._edconfig.get_image_format())
                         self._edpicture.set_delete_after_convert(self._edconfig.get_image_delete_after_convert())
                         self._edpicture.set_convert_space(self._edconfig.get_image_convert_space())
@@ -246,13 +241,8 @@ class EDProxyFrame(wx.Frame):
 
                 self._discovery_service.stop()
                 self._proxy_server.stop()
-
-                if self._edpicture:
-                    self._edpicture.stop()
-                    self._edpicture = None
-                    
-                if self._netlog_parser is not None:
-                    self._netlog_parser.stop()
+                self._edpicture.stop()
+                self._netlog_parser.stop()
 
                 self.start_button.Enable()
 

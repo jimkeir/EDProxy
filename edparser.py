@@ -62,6 +62,9 @@ class EDNetlogParser():
     def add_listener(self, callback, *args, **kwargs):
         self._event_queue.add_listener(callback, *args, **kwargs)
 
+    def set_netlog_prefix(self, value):
+        self._prefix = value
+        
     def get_netlog_prefix(self):
         return self._prefix
 
@@ -74,7 +77,7 @@ class EDNetlogParser():
 
     def start(self, netlog_path):
         if not self.is_running():
-            if not netlog_path:
+            if not netlog_path or len(netlog_path) == 0:
                 raise ValueError("Invalid path specified.")
 
             self._lock.acquire()
