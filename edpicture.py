@@ -79,9 +79,6 @@ class EDPictureMonitor(PatternMatchingEventHandler):
         self._event_queue = EDEventQueue()
         self._observer = None
 
-        self._http_server = _ThreadedHTTPServer(("", 8097), EDPictureDirHTTPRequestHandler)
-        self._url = "http://%s:%d/" % (edutils.get_ipaddr(), 8097)
-
     def add_listener(self, callback, *args, **kwargs):
         self._event_queue.add_listener(callback, *args, **kwargs)
 
@@ -92,10 +89,19 @@ class EDPictureMonitor(PatternMatchingEventHandler):
         self._delete_file = delete_file
         
     def set_name_replacement(self, name):
-        self._name_replacement = name
+        if len(name) == 0:
+            self._name_replacement = None
+        else:
+            self._name_replacement = name
         
     def set_convert_space(self, value):
-        self._convert_space = value
+        if len(value) == 0:
+            self._convert_space = None
+        else:
+            self._convert_space = value
+        
+    def set_image_path(self, path):
+        self._path = path
         
     def get_convert_format(self):
         return self._convert_format
@@ -118,6 +124,9 @@ class EDPictureMonitor(PatternMatchingEventHandler):
             self._observer.schedule(self, self._path, False)
             self._observer.start()
     
+            self._url = "http://%s:%d/" % (edutils.get_ipaddr(), 8097)
+
+            self._http_server = _ThreadedHTTPServer(("", 8097), EDPictureDirHTTPRequestHandler)
             self._thread = threading.Thread(target = self.__run_httpd)
             self._thread.start()
         
@@ -148,13 +157,16 @@ class EDPictureMonitor(PatternMatchingEventHandler):
                 
             filename = output_filename
         
-        self._event_queue.post(self._url + urllib.quote_plus(filename))
+        self._event_queue.post(_EDPictureEvent(self._url + urllib.quote_plus(filename)))
+        
     
     def __run_httpd(self):
         try:
             self._http_server.serve_forever()
         except:
             pass
+        
+        self.log.info("Exiting httpd thread.")
         
 def __test_on_created(path):
     print "Got path: ", path

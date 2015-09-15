@@ -15,13 +15,15 @@ import gettext
 
 import os, sys
 import threading
-import ConfigParser
 import logging
 
 import edutils
 import ednet
 import edparser
 import edconfig
+import edsettings
+import edpicture
+import netlogline
 
 class EDProxyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
@@ -34,14 +36,11 @@ class EDProxyFrame(wx.Frame):
 
         menu_bar = wx.MenuBar()
         settings_menu = wx.Menu()
-        netlog_menu = settings_menu.Append(1234, "Setup Netlog", "Setup the Netlog paths.")
-        image_menu = settings_menu.Append(1235, "Setup Image", "Setup image acquisition")
-        menu_bar.Append(settings_menu, "Settings")
+        pref_menu = settings_menu.Append(wx.ID_PREFERENCES, "&Preferences\tCTRL+,", "Configure Edproxy Settings.")
+        exit_menu = settings_menu.Append(wx.ID_EXIT, "&Exit", "Exit Edproxy.")
+        menu_bar.Append(settings_menu, "&File")
         self.SetMenuBar(menu_bar)
         
-        self.label_1 = wx.StaticText(self, wx.ID_ANY, _("Netlog Path:"), style=wx.ST_NO_AUTORESIZE)
-        self.netlog_path_txt_ctrl = wx.TextCtrl(self, wx.ID_ANY, _("/home/wes/src/edproxy/logs"))
-        self.browse_button = wx.Button(self, wx.ID_ANY, _("Browse"))
         self.start_button = wx.Button(self, wx.ID_ANY, _("Start"))
         self.stop_button = wx.Button(self, wx.ID_ANY, _("Stop"))
         
@@ -50,32 +49,35 @@ class EDProxyFrame(wx.Frame):
         self.__set_properties()
         self.__do_layout()
 
-        self.Bind(wx.EVT_MENU, self._on_netlog_menu, netlog_menu)
-        self.Bind(wx.EVT_MENU, self._on_image_menu, image_menu)
-        self.Bind(wx.EVT_BUTTON, self.on_browse, self.browse_button)
+        self.Bind(wx.EVT_MENU, self.__on_pref_menu, pref_menu)
+        self.Bind(wx.EVT_MENU, self.__on_exit_menu, exit_menu)
         self.Bind(wx.EVT_BUTTON, self.on_start, self.start_button)
         self.Bind(wx.EVT_BUTTON, self.on_stop, self.stop_button)
         # end wxGlade
 
         self.Bind(wx.EVT_CLOSE, self.on_win_close)
         
-        self._edconfig = edconfig.EDConfig()
-        self.netlog_path_txt_ctrl.ChangeValue(self._edconfig.get_netlog_path())
+        self._edconfig = edconfig.get_instance()
+        
+        if self._edconfig.get_edproxy_startup():
+            wx.PostEvent(self.GetEventHandler(), wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.start_button.GetId()))
+            
+#         if self._edconfig.get_start_minimized():
+#             print "hide"
 
     def __set_properties(self):
         # begin wxGlade: EDProxyFrame.__set_properties
         self.SetTitle(_("Elite: Dangerous Netlog Proxy"))
-        self.netlog_path_txt_ctrl.SetMinSize((467, 29))
+#         self.SetIcon(wx.Icon('edicon.ico', wx.BITMAP_TYPE_ICO))
         self.stop_button.Enable(False)
         self.client_listview.InsertColumn(0, "Connected IP Address", width = wx.LIST_AUTOSIZE_USEHEADER)
         self.client_listview.InsertColumn(1, "Port", width = wx.LIST_AUTOSIZE)
         # end wxGlade
 
-        self.SetIcon(wx.Icon('edicon.ico', wx.BITMAP_TYPE_ICO))
-
         self._lock = threading.Lock()
         self._client_list = list()
         self._netlog_parser = None
+        self._edpicture = None
 
         self._discovery_service = ednet.EDDiscoveryService("239.45.99.98", 45551)
         self._discovery_service.add_listener(self.__on_new_message)
@@ -87,11 +89,6 @@ class EDProxyFrame(wx.Frame):
         # begin wxGlade: EDProxyFrame.__do_layout
         sizer_3 = wx.BoxSizer(wx.VERTICAL)
         sizer_5 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_4 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_4.Add(self.label_1, 0, 0, 0)
-        sizer_4.Add(self.netlog_path_txt_ctrl, 1, 0, 0)
-        sizer_4.Add(self.browse_button, 0, wx.ALIGN_RIGHT, 0)
-        sizer_3.Add(sizer_4, 1, wx.EXPAND, 0)
         sizer_3.Add(self.client_listview, 0, wx.ALL | wx.EXPAND, 0)
         sizer_5.Add(self.start_button, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 0)
         sizer_5.Add(self.stop_button, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 0)
@@ -102,12 +99,42 @@ class EDProxyFrame(wx.Frame):
         self.Centre()
         # end wxGlade
 
-    def _on_netlog_menu(self, event):
-        print "Got netlog menu"
+    def __stop(self):
+        if not self.start_button.IsEnabled():
+            self._discovery_service.stop()
+            self._proxy_server.stop()
+            self._netlog_parser.stop()
+            
+            if self._edpicture:
+                self._edpicture.stop()
+
+            self._netlog_parser = None
+            self._edpicture = None
+            
+            self._lock.acquire()
+            for client in self._client_list:
+                client.close()
+            self._lock.release()
+        
+    def __on_pref_menu(self, event):
+        settings = edsettings.EDSettings(self, wx.ID_ANY, "Settings Configuration")
+        
+        if settings.ShowModal() == wx.ID_OK:
+            if self.stop_button.IsEnabled():
+                self.log.info("The preferences have changed. Stop the proxy and then attempt to restart it.")
+                
+                self.stop_button.Disable()
+                self.__stop()
+                self.start_button.Enable()
+                
+                wx.PostEvent(self.GetEventHandler(), wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.start_button.GetId()))
+            
+        settings.Destroy()
     
-    def _on_image_menu(self, event):
-        print "Got image menu"
-    
+    def __on_exit_menu(self, event):
+        self.__stop()
+        self.Destroy()
+        
     def __new_client_thread(self, client, addr):
         while not client.is_initialized() and client.is_running():
             try:
@@ -126,6 +153,11 @@ class EDProxyFrame(wx.Frame):
         self._lock.release()
 
     def __on_async_parser_event(self, event):
+        if event.get_line_type() == netlogline.NETLOG_LINE_TYPE.SYSTEM:
+            if self._edpicture:
+                self._edpicture.set_name_replacement(event.get_name())
+                self._edconfig.set_image_name_replacement(event.get_name())
+                
         self._lock.acquire()
         for client in self._client_list:
             client.send(event)
@@ -147,30 +179,17 @@ class EDProxyFrame(wx.Frame):
                                                                               edutils.get_ipaddr(),
                                                                               45550))
 
-    def on_browse(self, event):  # wxGlade: EDProxyFrame.<event_handler>
-        dir_path = wx.DirDialog(self, "Choose Netlog Path", style = wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
-
-        if dir_path.ShowModal() == wx.ID_OK:
-            self.netlog_path_txt_ctrl.ChangeValue(dir_path.GetPath())
-
-            configfilename = os.path.join(edutils.get_app_dir(), "edproxy.ini")
-            config = ConfigParser.SafeConfigParser()
-            config.read(configfilename)
-            config.set('Paths', 'netlog', dir_path.GetPath())
-
-            with open(configfilename, 'w') as configfile:
-                config.write(configfile)
-
-        dir_path.Destroy()
-
-        event.Skip()
+    def __on_new_image(self, event):
+        self._lock.acquire()
+        for client in self._client_list:
+            client.send(event)
+        self._lock.release()
 
     def on_start(self, event):  # wxGlade: EDProxyFrame.<event_handler>
-        netlog_path = self.netlog_path_txt_ctrl.GetValue()
+        netlog_path = self._edconfig.get_netlog_path()
+        
         if netlog_path and os.path.exists(netlog_path):
             self.start_button.Disable()
-            self.browse_button.Disable()
-            self.netlog_path_txt_ctrl.Disable()
 
             try:
                 config_path, _ = os.path.split(os.path.normpath(netlog_path))
@@ -193,6 +212,16 @@ class EDProxyFrame(wx.Frame):
                         edutils.set_verbose_enabled(config_path, True)
                         edutils.set_datestamp_enabled(config_path, True)
 
+                    if os.path.exists(self._edconfig.get_image_path()):
+                        self._edpicture = edpicture.EDPictureMonitor(self._edconfig.get_image_path())
+                        self._edpicture.add_listener(self.__on_new_image)
+                        self._edpicture.set_convert_format(self._edconfig.get_image_format())
+                        self._edpicture.set_delete_after_convert(self._edconfig.get_image_delete_after_convert())
+                        self._edpicture.set_convert_space(self._edconfig.get_image_convert_space())
+                        self._edpicture.set_name_replacement(self._edconfig.get_image_name_replacement())
+                        
+                        self._edpicture.start()
+                        
                     self._netlog_parser.start(netlog_path)
                     self._proxy_server.start()
                     self._discovery_service.start()
@@ -209,8 +238,6 @@ class EDProxyFrame(wx.Frame):
                     msg.ShowModal()
                     msg.Destroy()
 
-                    self.netlog_path_txt_ctrl.Enable()
-                    self.browse_button.Enable()
                     self.start_button.Enable()
             except:
                 self.log.error("There was an error starting the proxy.", exc_info = sys.exc_info())
@@ -220,11 +247,13 @@ class EDProxyFrame(wx.Frame):
                 self._discovery_service.stop()
                 self._proxy_server.stop()
 
+                if self._edpicture:
+                    self._edpicture.stop()
+                    self._edpicture = None
+                    
                 if self._netlog_parser is not None:
                     self._netlog_parser.stop()
 
-                self.netlog_path_txt_ctrl.Enable()
-                self.browse_button.Enable()
                 self.start_button.Enable()
 
                 msg = wx.MessageDialog(parent = self,
@@ -245,32 +274,13 @@ class EDProxyFrame(wx.Frame):
 
     def on_stop(self, event):  # wxGlade: EDProxyFrame.<event_handler>
         self.stop_button.Disable()
-
-        self._discovery_service.stop()
-        self._proxy_server.stop()
-        self._netlog_parser.stop()
-
-        self._lock.acquire()
-        for client in self._client_list:
-            client.close()
-        self._lock.release()
-
-        self.netlog_path_txt_ctrl.Enable()
-        self.browse_button.Enable()
+        self.__stop()
         self.start_button.Enable()
 
         event.Skip()
 
     def on_win_close(self, event):
-        if self.stop_button.IsEnabled():
-            self._discovery_service.stop()
-            self._proxy_server.stop()
-            self._netlog_parser.stop()
-
-            self._lock.acquire()
-            for client in self._client_list:
-                client.close()
-            self._lock.release()
+        self.__stop()
 
         event.Skip()
 
@@ -287,12 +297,14 @@ class EDProxyApp(wx.App):
 
 if __name__ == "__main__":
     gettext.install("edproxy") # replace with the appropriate catalog name
-  
-    user_dir = os.path.expanduser("~")
-    if not os.path.exists(user_dir + "/.edproxy"):
-        os.makedirs(user_dir + "/.edproxy")
+
+      
+    user_dir = os.path.join(edutils.get_user_dir(), ".edproxy")
+    if not os.path.exists(user_dir):
+        os.makedirs(user_dir)
  
-    logging.basicConfig(format = "%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s", filename = user_dir + "/.edproxy/edproxy.log")
+    user_dir = os.path.join(user_dir, "edproxy.log")
+    logging.basicConfig(format = "%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s", filename = user_dir)
   
     edproxy = EDProxyApp(0)
     edproxy.MainLoop()
