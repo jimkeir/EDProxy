@@ -21,7 +21,7 @@ class EDImportDialog(wx.Dialog):
         self._import_path.SetMinSize((467, 29))
         self._import_path.ChangeValue(db_path_selector[self._import_db.GetSelection()])
         
-        self.Bind(wx.EVT_BUTTON, self.__on_ok, id=wx.ID_OK)
+#         self.Bind(wx.EVT_BUTTON, self.__on_ok, id=wx.ID_OK)
         self.Bind(wx.EVT_BUTTON, self.__on_import_browse, self._import_browse_button)
     
         self.__do_layout()
@@ -48,8 +48,8 @@ class EDImportDialog(wx.Dialog):
         self.Layout()
         self.Centre()
 
-    def __on_ok(self, event):
-        event.Skip()
+#     def __on_ok(self, event):
+#         event.Skip()
 
     def __on_import_browse(self, event):
         defpath = self._import_path.GetValue()
@@ -64,4 +64,51 @@ class EDImportDialog(wx.Dialog):
             
         dir_path.Destroy()
         event.Skip()
+        
+class _EDImportEvent(object):
+    def __init__(self,
+                 date,
+                 system_name,
+                 position = (0.0, 0.0, 0.0),
+                 main_star = "NA",
+                 stellar_bodies = 1,
+                 stellar_types = [ "NA" ],
+                 planetary_bodies = 0,
+                 planetary_types = [ "NA" ],
+                 notes = "",
+                 ref_distances = []):
+        self._date = date
+        self._system = system_name
+        self._position = position
+        self._main_star = main_star
+        self._stellar_bodies = stellar_bodies
+        self._stellar_types = stellar_types
+        self._planetary_bodies = planetary_bodies
+        self._planetary_types = planetary_types
+        self._notes = notes
+        self._ref_distances = ref_distances
+        
+    def get_line_type(self):
+        return 'Import'
     
+    def _get_json_header(self):
+        ret = dict()
+        
+        ret['Date'] = self._time.strftime('%Y-%m-%d %H:%M:%S')
+        # ret['Date'] = self._time.isoformat()
+        ret['Type'] = str(self.get_line_type())
+
+        return ret
+
+    def get_json(self):
+        value = self._get_json_header()
+        value['System'] = self._system
+        value['Position'] = self._position
+        value['MainStar'] = self._main_star
+        value['StellarBodies'] = self._stellar_bodies
+        value['StellarTypes'] = self._stellar_types
+        value['PlanetaryBodies'] = self._planetary_bodies
+        value['PlanetaryTypes'] = self._planetary_types
+        value['Notes'] = self._notes
+        value['RefDistances'] = self._ref_distances
+        

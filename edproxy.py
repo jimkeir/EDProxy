@@ -24,6 +24,7 @@ import edconfig
 import edsettings
 import edpicture
 import netlogline
+import edimport
 
 class EDProxyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
@@ -36,10 +37,13 @@ class EDProxyFrame(wx.Frame):
 
         menu_bar = wx.MenuBar()
         settings_menu = wx.Menu()
+        self._import_menu = settings_menu.Append(wx.ID_ANY, "&Import\tCTRL+I")
         pref_menu = settings_menu.Append(wx.ID_PREFERENCES, "&Preferences\tCTRL+,", "Configure Edproxy Settings.")
         exit_menu = settings_menu.Append(wx.ID_EXIT, "&Exit", "Exit Edproxy.")
         menu_bar.Append(settings_menu, "&File")
         self.SetMenuBar(menu_bar)
+        
+        self._import_menu.Enable(False)
         
         self.start_button = wx.Button(self, wx.ID_ANY, _("Start"))
         self.stop_button = wx.Button(self, wx.ID_ANY, _("Stop"))
@@ -49,6 +53,7 @@ class EDProxyFrame(wx.Frame):
         self.__set_properties()
         self.__do_layout()
 
+        self.Bind(wx.EVT_MENU, self.__on_import_menu, self._import_menu)
         self.Bind(wx.EVT_MENU, self.__on_pref_menu, pref_menu)
         self.Bind(wx.EVT_MENU, self.__on_exit_menu, exit_menu)
         self.Bind(wx.EVT_BUTTON, self.on_start, self.start_button)
@@ -114,6 +119,14 @@ class EDProxyFrame(wx.Frame):
             for client in self._client_list:
                 client.close()
             self._lock.release()
+        
+    def __on_import_menu(self, event):
+        dbimport = edimport.EDImportDialog(self, wx.ID_ANY, "Import Exploration Database")
+        
+        if dbimport.ShowModal() == wx.ID_OK:
+            print "OK"
+            
+        dbimport.Destroy()
         
     def __on_pref_menu(self, event):
         settings = edsettings.EDSettings(self, wx.ID_ANY, "Settings Configuration")
@@ -224,6 +237,7 @@ class EDProxyFrame(wx.Frame):
                     # Announce to the world that EDProxy is up and running.
                     self._discovery_service.send(ednet.EDDiscoveryMessageAnnounce('edproxy', edutils.get_ipaddr(), 45550))
 
+                    self._import_menu.Enable(True)
                     self.stop_button.Enable()
                 else:
                     msg = wx.MessageDialog(parent = self,
@@ -263,6 +277,7 @@ class EDProxyFrame(wx.Frame):
         event.Skip()
 
     def on_stop(self, event):  # wxGlade: EDProxyFrame.<event_handler>
+        self._import_menu.Enable(False)
         self.stop_button.Disable()
         self.__stop()
         self.start_button.Enable()
