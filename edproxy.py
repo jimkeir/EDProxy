@@ -269,7 +269,7 @@ class EDProxyFrame(wx.Frame):
                     # Announce to the world that EDProxy is up and running.
                     self._discovery_service.send(ednet.EDDiscoveryMessageAnnounce('edproxy', edutils.get_ipaddr(), 45550))
 
-                    self._import_menu.Enable(True)
+#                     self._import_menu.Enable(True)
                     self.stop_button.Enable()
                 else:
                     msg = wx.MessageDialog(parent = self,
