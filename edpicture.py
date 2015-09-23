@@ -34,11 +34,14 @@ class _EDPictureEvent(object):
     def __str__(self, *args, **kwargs):
         return str(self.url)
 
+    def get_line_type(self):
+        return 'Image'
+    
     def _get_json_header(self):
         ret = dict()
         
         ret['Date'] = self._time.strftime('%Y-%m-%d %H:%M:%S')
-        ret['DateUtc'] = self._time_utc
+        ret['DateUtc'] = self._time_utc.strftime('%Y-%m-%d %H:%M:%S')
         ret['Type'] = 'Image'
 
         return ret
@@ -47,12 +50,15 @@ class _EDPictureEvent(object):
         value = self._get_json_header()
         value['ImageUrl'] = self.url
         
+        print value
         return json.dumps(value)
     
 class EDPictureDirHTTPRequestHandler(SimpleHTTPRequestHandler):
     def translate_path(self, path):
+        unquote_path = urllib.unquote_plus(path)
         for _path in _http_root_paths:
-            _path = _path + "/" + path
+            _path = _path + unquote_path
+            
             if (os.path.exists(_path)):
                 return _path
             

@@ -110,15 +110,22 @@ class EDProxyFrame(wx.Frame):
 
     def __stop(self):
         if not self.start_button.IsEnabled():
+            self.log.debug("Stop discovery service")
             self._discovery_service.stop()
+            self.log.debug("Stop Proxy server")
             self._proxy_server.stop()
+            self.log.debug("Stop netlog parser")
             self._netlog_parser.stop()
+            self.log.debug("Stop image acquisition service")
             self._edpicture.stop()
 
+            self.log.debug("Stop all proxy clients")
             self._lock.acquire()
+            self.client_listview.DeleteAllItems()
             for client in self._client_list:
                 client.close()
             self._lock.release()
+            self.log.debug("All services stopped")
         
     def __on_import_menu(self, event):
         dbimport = edimport.EDImportDialog(self, wx.ID_ANY, "Import Exploration Database")
@@ -155,12 +162,14 @@ class EDProxyFrame(wx.Frame):
                 self.log.debug("Timeout waiting for initialized. Try again.")
 
         if client.get_start_time() is not None:
-            edparser.EDNetlogParser.parse_past_logs(self.netlog_path_txt_ctrl.GetValue(),
+            edparser.EDNetlogParser.parse_past_logs(self._edconfig.get_netlog_path(),
                                                     self._netlog_parser.get_netlog_prefix(),
                                                     self.__on_sync_parser_event,
                                                     args = (client,),
                                                     start_time = client.get_start_time())
         self._lock.acquire()
+        self.client_listview.Append([ addr[0], addr[1] ])
+        client.set_ondisconnect_listener(self.__on_client_disconnect)
         self._client_list.append(client)
         self._lock.release()
 
@@ -175,13 +184,34 @@ class EDProxyFrame(wx.Frame):
         self._lock.release()
 
     def __on_sync_parser_event(self, event, client):
+        if event.get_line_type() == netlogline.NETLOG_LINE_TYPE.SYSTEM:
+            self._edpicture.set_name_replacement(event.get_name())
+            self._edconfig.set_image_name_replacement(event.get_name())
+
         client.send(event)
 
     def __on_new_client(self, client, addr):
         self.log.info("New remote client at [%s] connected", addr)
-        self.client_listview.Append([ addr[0], addr[1] ])
+        self._lock.acquire()
+        for _client in self._client_list:
+            self.log.debug("Send image to: [%s]", _client.get_peername())
+            if _client.get_peername()[0] == client.get_peername()[0]:
+                _client.close()
+        self._lock.release()
+
         threading.Thread(target = self.__new_client_thread, args = (client, addr)).start()
 
+    def __on_client_disconnect(self, client):
+        peername = client.get_peername()
+        
+        self._lock.acquire()
+        self._client_list.remove(client)
+        
+        index = self.client_listview.FindItem(0, peername[0])
+        if index != -1:
+            self.client_listview.DeleteItem(index)
+        self._lock.release()
+        
     def __on_new_message(self, message):
         if message.get_type() == ednet.DISCOVERY_SERVICE_TYPE.QUERY:
             self.log.debug("Received new discovery query message [%s]", message)
@@ -191,8 +221,10 @@ class EDProxyFrame(wx.Frame):
                                                                               45550))
 
     def __on_new_image(self, event):
+        self.log.debug("Received new image: [%s]", event)
         self._lock.acquire()
         for client in self._client_list:
+            self.log.debug("Send image to: [%s]", client.get_peername())
             client.send(event)
         self._lock.release()
 

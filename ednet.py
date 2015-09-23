@@ -8,6 +8,7 @@ from Queue import Empty
 from edevent import *
 import logging
 import sys
+from wx.py.dispatcher import disconnect
 
 #class EDServiceBase():
 #
@@ -125,7 +126,6 @@ class EDDiscoveryService():
 
     def send(self, message):
         try:
-            self.log.debug("Sending message [%s]", message)
             self._sock.sendto(message.get_json(), (self._broadcast_addr, self._broadcast_port))
         except Exception:
             self.log.error("Failed sending data.", exc_info = sys.exc_info())
@@ -276,9 +276,17 @@ class EDProxyClient():
         self._register_list = list()
         self._start_time = None
         self._sock = sock
+        
+        self._event_queue = EDEventQueue()
 
         threading.Thread(target = self.__run).start()
 
+    def set_ondisconnect_listener(self, disconnect_listener):
+        self._event_queue.add_listener(disconnect_listener)
+        
+    def get_peername(self):
+        return self._sock.getpeername()
+        
     def is_running(self):
         self._lock.acquire()
         ret = self._running
@@ -322,7 +330,7 @@ class EDProxyClient():
         if self.is_initialized() and self.is_running():
             if line.get_line_type() in self._register_list:
                 self._queue.put(line)
-
+        
     def __run(self):
         while self.is_running() and not self.is_initialized():
             try:
@@ -369,7 +377,6 @@ class EDProxyClient():
         while self.is_running():
             try:
                 line = self._queue.get(block = True, timeout = 0.5)
-
                 self._sock.send(line.get_json())
             except Empty:
                 pass
@@ -389,3 +396,5 @@ class EDProxyClient():
         self._lock.acquire()
         self._running = False
         self._lock.release()
+        
+        self._event_queue.post(self)
