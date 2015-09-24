@@ -8,6 +8,7 @@ Replicates the netLog entries (currently System line only) out to any registered
 * [wxPython](http://www.wxpython.org/download.php)
 * [psutil](https://github.com/giampaolo/psutil)
 * [watchdog](http://pythonhosted.org/watchdog/)
+* [Pillow](https://python-pillow.github.io/)
 
 ## Install using PIP
 
@@ -23,8 +24,14 @@ $ pip install psutil
 $ pip install watchdog
 ```
 
+```
+#!bash
+
+$ pip install Pillow
+```
+
 ## Download ##
-Windows: [32-bit](https://bitbucket.org/westokyo/edproxy/downloads/edproxy-1.1.0.zip)
+Windows: [32-bit](https://bitbucket.org/westokyo/edproxy/downloads/edproxy-1.2.1.zip)
 
 Note: MacOSX should be possible. Someone with a Mac will need to run pyinstaller, or py2app, on the source to generate a binary package.
 
