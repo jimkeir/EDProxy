@@ -1,6 +1,7 @@
 import threading
 
 from Queue import Queue
+import time
 
 class _EDThreadWorker(threading.Thread):
     def __init__(self, task_queue):
@@ -39,6 +40,7 @@ def _get_thread_pool():
 class EDEventQueue(object):
     def __init__(self):
         self._listener_list = list()
+        self._event_list = list()
         self._lock = threading.Lock()
         self._pool = _get_thread_pool()
 
@@ -50,6 +52,8 @@ class EDEventQueue(object):
             newkwargs.update(_kwargs)
 
             listener(*newargs, **newkwargs)
+            
+        self._event_list.remove(args)
         self._lock.release()
 
     def add_listener(self, func, *args, **kwargs):
@@ -58,4 +62,10 @@ class EDEventQueue(object):
         self._lock.release()
 
     def post(self, *args, **kwargs):
+        self._event_list.append(args)
         self._pool.add_task(self.__event_worker, *args, **kwargs)
+
+    def flush(self):
+        while len(self._event_list) != 0:
+            time.sleep(0.120)
+            

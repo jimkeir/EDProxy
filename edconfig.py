@@ -9,54 +9,59 @@ class EDConfig(object):
         self._inifile = os.path.join(self._eduser_dir, "edproxy.ini")
         self._inifile_deprecated = os.path.join(edutils.get_app_dir(), "edproxy.ini")
         
+        self._version = '2'
+        
         self.__load()
         
     def __load(self):
         if os.path.exists(self._inifile):
             self._config_parser = ConfigParser.SafeConfigParser()
             self._config_parser.read(self._inifile)
+            
+            version = self._config_parser.get('Version', 'version')
+            self.__upgrade(version, self._version)
         elif os.path.exists(self._inifile_deprecated):
             self._config_parser = ConfigParser.SafeConfigParser()
 
             legacy_parser = ConfigParser.SafeConfigParser()
             legacy_parser.read(self._inifile_deprecated)
-            
-            self._config_parser.add_section('Version')
-            self._config_parser.add_section('General')
-            self._config_parser.add_section('Netlog')
-            self._config_parser.add_section('Image')
-            
-            self._config_parser.set('Version', 'version', '1')
 
-            self._config_parser.set('General', 'system_startup', 'False')
-            self._config_parser.set('General', 'edproxy_startup', 'False')
-            self._config_parser.set('General', 'start_minimized', 'False')
-
-            self._config_parser.set('Netlog', 'path', legacy_parser.get('Paths', 'netlog'))
-            
-            self._config_parser.set('Image', 'path', '')
-            self._config_parser.set('Image', 'format', edpicture.IMAGE_CONVERT_FORMAT.BMP)
-            self._config_parser.set('Image', 'convert_space', '')
-            self._config_parser.set('Image', 'delete_after_convert', 'False')
-            self._config_parser.set('Image', 'name_replacement', '')
-            
-            self.__write_config()            
+            self.__create_default_config(legacy_parser)
         else:
+            self._config_parser = ConfigParser.SafeConfigParser()
+            self.__create_default_config()
+
+    def __upgrade(self, old_value, new_value):
+        self._config_parser.set('Version', 'version', self._version)
+
+        if old_value == '1':            
+            self._config_parser.add_section('Discovery')
+            self._config_parser.set('Discovery', 'ttl', '1')
+            
+            old_value = '2'
+
+    def __create_default_config(self, legacy_parser = None):
             self._config_parser = ConfigParser.SafeConfigParser()
             
             self._config_parser.add_section('Version')
             self._config_parser.add_section('General')
+            self._config_parser.add_section('Discovery')
             self._config_parser.add_section('Netlog')
             self._config_parser.add_section('Image')
 
-            self._config_parser.set('Version', 'version', '1')
+            self._config_parser.set('Version', 'version', self._version)
 
             self._config_parser.set('General', 'system_startup', 'False')
             self._config_parser.set('General', 'edproxy_startup', 'False')
             self._config_parser.set('General', 'start_minimized', 'False')
 
-            value = "C:\\Program Files (x86)\\Frontier\\EDLaunch\\Products\\FORC-FDEV-D-1010\\Logs"
-            self._config_parser.set('Netlog', 'path', value)
+            self._config_parser.set('Discovery', 'ttl', '1')
+            
+            if legacy_parser:
+                self._config_parser.set('Netlog', 'path', legacy_parser.get('Paths', 'netlog'))
+            else:
+                value = "C:\\Program Files (x86)\\Frontier\\EDLaunch\\Products\\FORC-FDEV-D-1010\\Logs"
+                self._config_parser.set('Netlog', 'path', value)
 
             self._config_parser.set('Image', 'path', '')
             self._config_parser.set('Image', 'format', edpicture.IMAGE_CONVERT_FORMAT.BMP)
@@ -65,13 +70,13 @@ class EDConfig(object):
             self._config_parser.set('Image', 'name_replacement', '')
 
             self.__write_config()
-    
+        
     def __write_config(self):
         with open(self._inifile, "w+") as outf:
             self._config_parser.write(outf)
         
     def get_config_version(self):
-        return self._config_parser.get('Version', 'version')
+        return self._version
     
     def get_system_startup(self):
         return (self._config_parser.get('General', 'system_startup') == 'True')
@@ -82,6 +87,9 @@ class EDConfig(object):
     def get_start_minimized(self):
         return (self._config_parser.get('General', 'start_minimized') == 'True')
         
+    def get_discovery_ttl(self):
+        return int(self._config_parser.get('Discovery', 'ttl'))
+    
     def get_netlog_path(self):
         return self._config_parser.get('Netlog', 'path')
     
@@ -111,6 +119,9 @@ class EDConfig(object):
     def set_start_minimized(self, value):
         self._config_parser.set('General', 'start_minimized', str(value))
         self.__write_config()
+        
+    def set_discovery_ttl(self, value):
+        self._config_parser.set('Discovery', 'ttl', str(value))
 
     def set_netlog_path(self, path):
         self._config_parser.set('Netlog', 'path', path)

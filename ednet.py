@@ -9,6 +9,7 @@ from edevent import *
 import logging
 import sys
 from wx.py.dispatcher import disconnect
+import edconfig
 
 #class EDServiceBase():
 #
@@ -126,6 +127,7 @@ class EDDiscoveryService():
 
     def send(self, message):
         try:
+            self.log.debug("Sending: [%s]", message)
             self._sock.sendto(message.get_json(), (self._broadcast_addr, self._broadcast_port))
         except Exception:
             self.log.error("Failed sending data.", exc_info = sys.exc_info())
@@ -134,11 +136,12 @@ class EDDiscoveryService():
         group = socket.inet_aton(self._broadcast_addr)
         mreq = struct.pack('4sL', group, socket.INADDR_ANY)
 
+        self.log.debug("TTL: %d", edconfig.get_instance().get_discovery_ttl())
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._sock.setblocking(0)
         self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
-        self._sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, struct.pack('b', 1))
+        self._sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, struct.pack('b', edconfig.get_instance().get_discovery_ttl()))
         self._sock.bind(('', self._broadcast_port))
         self._sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
@@ -163,6 +166,7 @@ class EDDiscoveryService():
                 if data:
                     try:
                         message = EDDiscoveryMessageFactory.get_message(json.loads(data))
+                        self.log.debug("Received: [%s]", message)
                         self._event_queue.post(message)
                     except:
                         pass

@@ -132,6 +132,8 @@ class EDNetlogParser():
                                     eq.post(parsed_line)
 
                     logfile.close()
+                
+        eq.flush()
 
     def __run(self, netlog_path):
         while self.is_running():

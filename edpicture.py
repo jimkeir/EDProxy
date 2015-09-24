@@ -14,6 +14,9 @@ import json
 import edutils
 import PIL.Image
 import urllib
+import edparser
+import edconfig
+import netlogline
 
 _http_root_paths = []
 
@@ -50,7 +53,6 @@ class _EDPictureEvent(object):
         value = self._get_json_header()
         value['ImageUrl'] = self.url
         
-        print value
         return json.dumps(value)
     
 class EDPictureDirHTTPRequestHandler(SimpleHTTPRequestHandler):
@@ -132,11 +134,15 @@ class EDPictureMonitor(PatternMatchingEventHandler):
     def on_created(self, event):
         threading.Thread(target = self.__run_imaged, args = (event,)).start()        
 
+    def __log_parser(self, event):
+        if event.get_line_type() == netlogline.NETLOG_LINE_TYPE.SYSTEM:
+            self._name_replacement = event.get_name()
+
+        
     def start(self):
         if not self._observer:
             self._observer = observers.Observer()
             self._observer.schedule(self, self._path, False)
-            self._observer.start()
     
             self._url = "http://%s:%d/" % (edutils.get_ipaddr(), 8097)
 
@@ -175,7 +181,17 @@ class EDPictureMonitor(PatternMatchingEventHandler):
         
     
     def __run_httpd(self):
+        if not self._name_replacement:
+            config_path, _ = os.path.split(os.path.normpath(edconfig.get_instance().get_netlog_path()))
+            config_path = os.path.join(config_path, "AppConfig.xml")
+
+            edparser.EDNetlogParser.parse_past_logs(edconfig.get_instance().get_netlog_path(),
+                                                    edutils.get_logfile_prefix(config_path),
+                                                    self.__log_parser)
+            edconfig.get_instance().set_image_name_replacement(self._name_replacement)
+            
         try:
+            self._observer.start()
             self._http_server.serve_forever()
         except:
             pass

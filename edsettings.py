@@ -29,6 +29,8 @@ class EDSettings(wx.Dialog):
         self._start_on_launch = wx.CheckBox(self, label = "Start proxy on Edproxy launch")
         self._start_on_startup = wx.CheckBox(self, label = "Start Edproxy on system startup")
         self._start_minimized = wx.CheckBox(self, label = "Start Edproxy minimized")
+
+        self._discovery_ttl = wx.TextCtrl(self) #, wx.ID_ANY, _(self._edconfig.get_netlog_path()))
         
         self._netlog_path = wx.TextCtrl(self) #, wx.ID_ANY, _(self._edconfig.get_netlog_path()))
         self._netlog_browse_button = wx.Button(self, wx.ID_ANY, _("Browse"))
@@ -58,6 +60,8 @@ class EDSettings(wx.Dialog):
         self._start_on_startup.Disable()
         self._start_minimized.Disable()
         
+        self._discovery_ttl.ChangeValue(str(self._edconfig.get_discovery_ttl()))
+        
         self._netlog_path.ChangeValue(self._edconfig.get_netlog_path())
         
         self._image_path.ChangeValue(self._edconfig.get_image_path())
@@ -76,8 +80,9 @@ class EDSettings(wx.Dialog):
     def __do_layout(self):
         # The three main panel boxes
         sizer1 = wx.StaticBoxSizer(wx.StaticBox(self, label = "General"), wx.VERTICAL)
-        sizer2 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Netlog Configuration"), wx.HORIZONTAL)
-        sizer3 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Image Configuraiton"), wx.VERTICAL)
+        sizer2 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Discovery Configuration"), wx.HORIZONTAL)
+        sizer3 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Netlog Configuration"), wx.HORIZONTAL)
+        sizer4 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Image Configuration"), wx.VERTICAL)
         
         box1 = wx.BoxSizer(wx.VERTICAL)
         box2 = wx.BoxSizer(wx.HORIZONTAL)
@@ -86,26 +91,40 @@ class EDSettings(wx.Dialog):
         
         button_sizer = self.CreateSeparatedButtonSizer(wx.CANCEL | wx.OK)
 
-        # Add all the main panel boxes to the top-level sizer
+        # Setup main layout
         box1.Add(sizer1, 0, wx.EXPAND)
         box1.AddSpacer(5)
         box1.Add(sizer2, 0, wx.EXPAND)
         box1.AddSpacer(5)
         box1.Add(sizer3, 0, wx.EXPAND)
+        box1.AddSpacer(5)
+        box1.Add(sizer4, 0, wx.EXPAND)
         box1.Add(button_sizer, 0, wx.EXPAND | wx.ALIGN_RIGHT)
+        # End Setup main layout
         
+        # Start General configuration settings
         sizer1.Add(self._start_on_startup, 0, wx.EXPAND | wx.ALIGN_LEFT)
         sizer1.AddSpacer(5)
         sizer1.Add(self._start_on_launch, 0, wx.EXPAND | wx.ALIGN_LEFT)
         sizer1.AddSpacer(5)
         sizer1.Add(self._start_minimized, 0, wx.EXPAND | wx.ALIGN_LEFT)
+        # End General configuration settings
         
-        sizer2.Add(wx.StaticText(self, wx.ID_ANY, _("Netlog Path:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+        # Start Discovery configuration
+        sizer2.Add(wx.StaticText(self, wx.ID_ANY, _("Multicast Time-to-Live (TTL):"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
         sizer2.AddSpacer(2)
-        sizer2.Add(self._netlog_path, 1)
-        sizer2.AddSpacer(5)
-        sizer2.Add(self._netlog_browse_button, flag = wx.ALIGN_RIGHT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+        sizer2.Add(self._discovery_ttl)
+        # End Discovery configuration
         
+        # Start Netlog configuration settings
+        sizer3.Add(wx.StaticText(self, wx.ID_ANY, _("Netlog Path:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+        sizer3.AddSpacer(2)
+        sizer3.Add(self._netlog_path, 1)
+        sizer3.AddSpacer(5)
+        sizer3.Add(self._netlog_browse_button, flag = wx.ALIGN_RIGHT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+        # End Netlog configuration settings
+        
+        # Start Image configuration settings
         box2.Add(wx.StaticText(self, wx.ID_ANY, _("Images Path:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
         box2.AddSpacer(2)
         box2.Add(self._image_path, 1)
@@ -118,13 +137,14 @@ class EDSettings(wx.Dialog):
         box4.Add(self._image_replace)
         box4.Add(wx.StaticText(self, wx.ID_ANY, _("Replace \"space\" with a single character"), style=wx.ST_NO_AUTORESIZE))
         
-        sizer3.Add(box2)
-        sizer3.AddSpacer(5)
-        sizer3.Add(box3)
-        sizer3.AddSpacer(5)
-        sizer3.Add(box4)
-        sizer3.AddSpacer(5)
-        sizer3.Add(self._image_delete)
+        sizer4.Add(box2)
+        sizer4.AddSpacer(5)
+        sizer4.Add(box3)
+        sizer4.AddSpacer(5)
+        sizer4.Add(box4)
+        sizer4.AddSpacer(5)
+        sizer4.Add(self._image_delete)
+        # End Image configuration settings
         
         self.SetSizer(box1)
         box1.Fit(self)
@@ -135,6 +155,8 @@ class EDSettings(wx.Dialog):
         self._edconfig.set_system_startup(self._start_on_startup.IsChecked())
         self._edconfig.set_edproxy_startup(self._start_on_launch.IsChecked())
         self._edconfig.set_start_minimized(self._start_minimized.IsChecked())
+        
+        self._edconfig.set_discovery_ttl(self._discovery_ttl.GetValue())
         
         self._edconfig.set_netlog_path(os.path.abspath(os.path.expanduser(self._netlog_path.GetValue())))
 
