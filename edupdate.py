@@ -11,6 +11,7 @@ import wx
 import subprocess
 from wx import wxEVT_CLOSE_WINDOW
 import sys
+import urllib
 
 UpgradeEventType = wx.NewEventType()
 EVT_UPGRADE_EVENT = wx.PyEventBinder(UpgradeEventType, 1)
@@ -66,8 +67,8 @@ class EDUpdater(object):
     def __run(self):
         while self.is_running():
             try:
+                print self.latest_url
                 with contextlib.closing(urllib2.urlopen(self.latest_url)) as response:
-                    print response.getcode()
                     if response.getcode() == 200 or response.getcode() == None:
                         latest = response.read()
                         
@@ -80,13 +81,8 @@ class EDUpdater(object):
                                 tmpdir = tempfile.gettempdir()
                                 tmpdir = os.path.join(tmpdir, path)
                                 
-                                with open(tmpdir, "w") as tmpfile:
-                                    with contextlib.closing(urllib2.urlopen(latest)) as download:
-                                        if download.getcode() == 200 or download.getcode() == None:
-                                            shutil.copyfileobj(download, tmpfile)
-                                            wx.PostEvent(self.parent, UpgradeEvent(tmpfile.name, self))
-                                        else:
-                                            self._log.error("Failed to get: [%s] with code [%d]", latest, response.getcode())                                    
+                                filename, _ = urllib.urlretrieve(latest, tmpdir)
+                                wx.PostEvent(self.parent, UpgradeEvent(filename, self))
                     else:
                         self._log.error("Failed to get: [%s] with code [%d]", self.latest_url, response.getcode())
             except urllib2.URLError, e:
@@ -98,15 +94,19 @@ class EDUpdater(object):
         
 class EDWin32Updater(EDUpdater):
     def __init__(self, parent, version, base_url = "https://bitbucket.org/westokyo/edproxy/downloads"):
-        filename = "edproxy-" + version + ".zip"
+        filename = "edproxy-win32-" + version + ".exe"
+        print base_url
         url = urlparse.urljoin(base_url,
-                               os.path.join(urlparse.urlparse(base_url).path, "LATEST-win32"))
+                               urlparse.urlparse(base_url).path + "/LATEST-win32")
+#         url = urlparse.urljoin(base_url,
+#                                os.path.join(urlparse.urlparse(base_url).path, "LATEST-win32"))
+        print url
         
         EDUpdater.__init__(self, parent, url, filename)
         
     def perform_update(self, latest):
         print "Update win32:", latest
-        subprocess.Popen([latest], creationflags=0x00000008, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.Popen([latest], creationflags=0x00000008)
         wx.PostEvent(self.parent, wx.CloseEvent(wxEVT_CLOSE_WINDOW))
         
 class EDMacOSXUpdater(EDUpdater):
