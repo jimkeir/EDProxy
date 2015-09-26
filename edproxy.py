@@ -25,6 +25,7 @@ import edsettings
 import edpicture
 import netlogline
 import edimport
+import edupdate
 
 class EDProxyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
@@ -49,7 +50,7 @@ class EDProxyFrame(wx.Frame):
         self.stop_button = wx.Button(self, wx.ID_ANY, _("Stop"))
         
         self.client_listview = wx.ListView(self, style = wx.LC_REPORT | wx.BORDER_SUNKEN)
-
+        
         self.__set_properties()
         self.__do_layout()
 
@@ -58,15 +59,23 @@ class EDProxyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.__on_exit_menu, exit_menu)
         self.Bind(wx.EVT_BUTTON, self.on_start, self.start_button)
         self.Bind(wx.EVT_BUTTON, self.on_stop, self.stop_button)
+        
         # end wxGlade
 
         self.Bind(wx.EVT_CLOSE, self.on_win_close)
         
         self._edconfig = edconfig.get_instance()
-        
+
         if self._edconfig.get_edproxy_startup():
             wx.PostEvent(self.GetEventHandler(), wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.start_button.GetId()))
-            
+
+        if sys.platform == "win32":
+            self._updater = edupdate.EDWin32Updater(self, "1.2.2")
+        elif sys.platform == "darwin":
+            self._updater = edupdate.EDMacOSXUpdater(self, "2.0.1", base_url="file:///Users/wes/src/pydev/edproxy/testbed")
+        
+        self.Bind(edupdate.EVT_UPGRADE_EVENT, self.__on_upgrade)
+                    
 #         if self._edconfig.get_start_minimized():
 #             print "hide"
 
@@ -126,6 +135,20 @@ class EDProxyFrame(wx.Frame):
                 client.close()
             self._lock.release()
             self.log.debug("All services stopped")
+        
+    def __on_upgrade(self, event):
+        msg = wx.MessageDialog(parent = self,
+                               message = "An update for Edproxy is available. Proceed with update?",
+                               caption = "Edproxy Update Available",
+                               style = wx.CANCEL | wx.OK | wx.ICON_INFORMATION | wx.CENTRE)
+        
+        if msg.ShowModal() == wx.ID_OK:
+            self.__stop()
+            
+            # We will NEVER return from HERE!
+            event.get_updater().perform_update(event.get_upgrade_file_path())
+            
+        event.Skip()
         
     def __on_import_menu(self, event):
         dbimport = edimport.EDImportDialog(self, wx.ID_ANY, "Import Exploration Database")

@@ -4,7 +4,9 @@
 *.ini
 *.bmp
 *.png
-edproxy.spec
+*.spec
+*.dmg
+LATEST*
 .project
 .pydevproject
 /logs/
