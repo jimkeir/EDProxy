@@ -67,7 +67,6 @@ class EDUpdater(object):
     def __run(self):
         while self.is_running():
             try:
-                print self.latest_url
                 with contextlib.closing(urllib2.urlopen(self.latest_url)) as response:
                     if response.getcode() == 200 or response.getcode() == None:
                         latest = response.read()
@@ -95,17 +94,12 @@ class EDUpdater(object):
 class EDWin32Updater(EDUpdater):
     def __init__(self, parent, version, base_url = "https://bitbucket.org/westokyo/edproxy/downloads"):
         filename = "edproxy-win32-" + version + ".exe"
-        print base_url
         url = urlparse.urljoin(base_url,
-                               urlparse.urlparse(base_url).path + "/LATEST-win32")
-#         url = urlparse.urljoin(base_url,
-#                                os.path.join(urlparse.urlparse(base_url).path, "LATEST-win32"))
-        print url
+                               os.path.join(urlparse.urlparse(base_url).path, "LATEST-win32"))
         
         EDUpdater.__init__(self, parent, url, filename)
         
     def perform_update(self, latest):
-        print "Update win32:", latest
         subprocess.Popen([latest], creationflags=0x00000008)
         wx.PostEvent(self.parent, wx.CloseEvent(wxEVT_CLOSE_WINDOW))
         
@@ -117,8 +111,6 @@ class EDMacOSXUpdater(EDUpdater):
         EDUpdater.__init__(self, parent, url, filename)
         
     def perform_update(self, latest):
-        print "Update macosx:", latest
-        
         mnt_path = tempfile.mkdtemp("edproxy_update")
         
         # Mount the .dmg filesystem
