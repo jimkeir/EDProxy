@@ -95,7 +95,8 @@ class EDWin32Updater(EDUpdater):
     def __init__(self, parent, version, base_url = "https://bitbucket.org/westokyo/edproxy/downloads"):
         filename = "edproxy-win32-" + version + ".exe"
         url = urlparse.urljoin(base_url,
-                               os.path.join(urlparse.urlparse(base_url).path, "LATEST-win32"))
+                               urlparse.urlparse(base_url).path + "/LATEST-win32")
+        print url
         
         EDUpdater.__init__(self, parent, url, filename)
         
@@ -107,7 +108,7 @@ class EDMacOSXUpdater(EDUpdater):
     def __init__(self, parent, version, base_url = "https://bitbucket.org/westokyo/edproxy/downloads"):
         filename = "edproxy-macosx-" + version + ".dmg"
         url = urlparse.urljoin(base_url,
-                               os.path.join(urlparse.urlparse(base_url).path, "LATEST-macosx"))
+                               urlparse.urlparse(base_url).path + "/LATEST-macosx")
         EDUpdater.__init__(self, parent, url, filename)
         
     def perform_update(self, latest):
