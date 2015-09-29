@@ -129,11 +129,11 @@ class EDProxyFrame(wx.Frame):
             self._edpicture.stop()
 
             self.log.debug("Stop all proxy clients")
-            self._lock.acquire()
+#             self._lock.acquire()
             self.client_listview.DeleteAllItems()
             for client in self._client_list:
                 client.close()
-            self._lock.release()
+#             self._lock.release()
             self.log.debug("All services stopped")
         
     def __on_upgrade(self, event):
@@ -222,7 +222,9 @@ class EDProxyFrame(wx.Frame):
                 _client.close()
         self._lock.release()
 
-        threading.Thread(target = self.__new_client_thread, args = (client, addr)).start()
+        _thread = threading.Thread(target = self.__new_client_thread, args = (client, addr))
+        _thread.daemon = True
+        _thread.start()
 
     def __on_client_disconnect(self, client):
         peername = client.get_peername()

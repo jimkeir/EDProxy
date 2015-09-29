@@ -132,7 +132,9 @@ class EDPictureMonitor(PatternMatchingEventHandler):
         return self._name_replacement
     
     def on_created(self, event):
-        threading.Thread(target = self.__run_imaged, args = (event,)).start()        
+        _thread = threading.Thread(target = self.__run_imaged, args = (event,))
+        _thread.daemon = True
+        _thread.start()        
 
     def __log_parser(self, event):
         if event.get_line_type() == netlogline.NETLOG_LINE_TYPE.SYSTEM:
@@ -148,6 +150,7 @@ class EDPictureMonitor(PatternMatchingEventHandler):
 
             self._http_server = _ThreadedHTTPServer(("", 8097), EDPictureDirHTTPRequestHandler)
             self._thread = threading.Thread(target = self.__run_httpd)
+            self._thread.daemon = True
             self._thread.start()
         
     def stop(self):

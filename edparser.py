@@ -82,7 +82,9 @@ class EDNetlogParser():
 
             self._lock.acquire()
             self._running = True
-            threading.Thread(target = self.__run, args = (netlog_path,)).start()
+            _thread = threading.Thread(target = self.__run, args = (netlog_path,))
+            _thread.daemon = True
+            _thread.start()
             self._lock.release()
 
     def stop(self):

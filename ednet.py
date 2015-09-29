@@ -111,6 +111,7 @@ class EDDiscoveryService():
             self._running = True
 
             self._thread = threading.Thread(target = self.__run)
+            self._thread.daemon = True
             self._thread.start()
 
             while self._running and not self._initialized:
@@ -207,6 +208,7 @@ class EDProxyServer():
             self._running = True
 
             self._thread = threading.Thread(target = self.__run)
+            self._thread.daemon = True
             self._thread.start()
 
             while not self._initialized and self._running:
@@ -276,14 +278,18 @@ class EDProxyClient():
 
         self._lock = threading.Lock()
         self._conditional = threading.Condition(self._lock)
-        self._queue = Queue()
         self._register_list = list()
         self._start_time = None
         self._sock = sock
+        self._sock.settimeout(60)
+        self._heartbeat = None
+        self._heartbeat_event = threading.Event()
         
         self._event_queue = EDEventQueue()
 
-        threading.Thread(target = self.__run).start()
+        _thread = threading.Thread(target = self.__run)
+        _thread.daemon = True
+        _thread.start()
 
     def set_ondisconnect_listener(self, disconnect_listener):
         self._event_queue.add_listener(disconnect_listener)
@@ -328,23 +334,75 @@ class EDProxyClient():
         if self.is_running():
             self._lock.acquire()
             self._running = False
+            
+            try:
+                self._sock.shutdown(socket.SHUT_RDWR)
+                self._sock.close()
+            except:
+                pass
+
             self._lock.release()
 
     def send(self, line):
         if self.is_initialized() and self.is_running():
             if line.get_line_type() in self._register_list:
-                self._queue.put(line)
+                try:
+                    self._sock.send(line.get_json())
+                except:
+                    self.close()
         
-    def __run(self):
-        while self.is_running() and not self.is_initialized():
+    def __handle_init(self, json_map):
+        self._register_list = json_map['Register']
+        start_time = json_map['StartTime']
+
+        if 'Heartbeat' in json_map:
+            self._heartbeat = json_map['Heartbeat']
+            if self._heartbeat != None and self._heartbeat > 0:
+                self._heartbeat = self._heartbeat * 2
+                
+                _thread = threading.Thread(target = self.__heartbeat_run)
+                _thread.daemon = True
+                _thread.start()
+            
+        if start_time == "all":
+            self._start_time = datetime.datetime.fromtimestamp(0)
+        elif start_time == "now":
+            self._start_time = None
+        else:
+            __date = start_time
             try:
-                rr, _, _ = select.select([self._sock], [], [], 0.5)
+                __date = __date[:__date.index(".")]
+            except ValueError:
+                pass
+
+            self._start_time = datetime.datetime.strptime(__date, "%Y-%m-%dT%H:%M:%S")
+
+        self._lock.acquire()
+        self._initialized = True
+        self._conditional.notify()
+        self._lock.release()
+
+    def __handle_heartbeat(self, json_map):
+        self._heartbeat_event.set()
+    
+    def __heartbeat_run(self):
+        while self.is_running():
+            if not self._heartbeat_event.wait(self._heartbeat):
+                self.log.error("Two heartbeats were missed! Closing down the socket.")
+                self.close()
+                
+            self._heartbeat_event.clear()
+    
+    def __run(self):
+        while self.is_running():
+            try:
+                rr, _, _ = select.select([self._sock], [], [], 5)
             except:
                 self._lock.acquire()
                 self._running = False
                 self._lock.release()
                 
-            if rr:
+            if rr and self.is_running():
                 json_map = None
 
                 try:
@@ -357,38 +415,10 @@ class EDProxyClient():
                 if json_map:
                     json_map = json.loads(json_map)
                     if json_map['Type'] == 'Init':
-                        self._register_list = json_map['Register']
-                        start_time = json_map['StartTime']
-
-                        if start_time == "all":
-                            self._start_time = datetime.datetime.fromtimestamp(0)
-                        elif start_time == "now":
-                            self._start_time = None
-                        else:
-                            __date = start_time
-                            try:
-                                __date = __date[:__date.index(".")]
-                            except ValueError:
-                                pass
-
-                            self._start_time = datetime.datetime.strptime(__date, "%Y-%m-%dT%H:%M:%S")
-
-                        self._lock.acquire()
-                        self._initialized = True
-                        self._conditional.notify()
-                        self._lock.release()
-
-        while self.is_running():
-            try:
-                line = self._queue.get(block = True, timeout = 0.5)
-                self._sock.send(line.get_json())
-            except Empty:
-                pass
-            except:
-                self._lock.acquire()
-                self._running = False
-                self._lock.release()
-
+                        self.__handle_init(json_map)
+                    if json_map['Type'] == 'Heartbeat':
+                        self.__handle_heartbeat(json_map)
+                        
         try:
             self._sock.shutdown(socket.SHUT_RDWR)
             self._sock.close()

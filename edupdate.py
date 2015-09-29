@@ -96,7 +96,6 @@ class EDWin32Updater(EDUpdater):
         filename = "edproxy-win32-" + version + ".exe"
         url = urlparse.urljoin(base_url,
                                urlparse.urlparse(base_url).path + "/LATEST-win32")
-        print url
         
         EDUpdater.__init__(self, parent, url, filename)
         
