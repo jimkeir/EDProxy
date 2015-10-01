@@ -6,6 +6,10 @@ import edpicture
 class EDConfig(object):
     def __init__(self):
         self._eduser_dir = os.path.join(edutils.get_user_dir(), ".edproxy")
+        
+        if not os.path.exists(self._eduser_dir):
+            os.makedirs(self._eduser_dir)
+
         self._inifile = os.path.join(self._eduser_dir, "edproxy.ini")
         self._inifile_deprecated = os.path.join(edutils.get_app_dir(), "edproxy.ini")
         
