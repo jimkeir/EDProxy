@@ -159,6 +159,19 @@ class EDPictureMonitor(PatternMatchingEventHandler):
             self._observer.stop()
             self._observer = None
         
+    def __wait_for_finish(self, path):
+        copying = True
+        prev_size = 0
+        
+        while copying:
+            size = os.path.getsize(path)
+            
+            if (size != prev_size):
+                prev_size = size
+                time.sleep(2)
+            else:
+                copying = False
+                
     def __run_imaged(self, events):
         pathname, filename = os.path.split(events.src_path)
         
@@ -172,16 +185,32 @@ class EDPictureMonitor(PatternMatchingEventHandler):
                 
             if self._convert_space:
                 output_filename = output_filename.replace(" ", self._convert_space)
-            
-            PIL.Image.open(events.src_path).save(pathname + "/" + output_filename)
 
-            if (self._delete_file):
-                os.remove(events.src_path)
-                
             filename = output_filename
+            
+        converted = False
+        convert_attempts = 1
         
-        self._event_queue.post(_EDPictureEvent(self._url + urllib.quote_plus(filename)))
+        while not converted and convert_attempts != 5:
+            self.log.debug("Image Conversion attempt: [%d]", convert_attempts)
+            convert_attempts = convert_attempts + 1
+            
+            self.__wait_for_finish(events.src_path)
+            
+            try:
+                if self._convert_format == IMAGE_CONVERT_FORMAT.BMP:
+                    converted = True
+                else:
+                    PIL.Image.open(events.src_path).save(os.path.join(pathname, filename))
+                    converted = True
+                    
+                    if (self._delete_file):
+                        os.remove(events.src_path)
+            except Exception as e:
+                self.log.error("Failed converting image! [%s]", e)
         
+        if converted:
+            self._event_queue.post(_EDPictureEvent(self._url + urllib.quote_plus(filename)))
     
     def __run_httpd(self):
         if not self._name_replacement:
