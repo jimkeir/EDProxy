@@ -82,7 +82,7 @@ class EDProxyFrame(wx.Frame):
     def __set_properties(self):
         # begin wxGlade: EDProxyFrame.__set_properties
         self.SetTitle(_("Elite: Dangerous Proxy"))
-#         self.SetIcon(wx.Icon('edicon.ico', wx.BITMAP_TYPE_ICO))
+        self.SetIcon(wx.Icon('edicon.ico', wx.BITMAP_TYPE_ICO))
         self.stop_button.Enable(False)
         self.client_listview.InsertColumn(0, "Connected IP Address", width = wx.LIST_AUTOSIZE_USEHEADER)
         self.client_listview.InsertColumn(1, "Port", width = wx.LIST_AUTOSIZE)
