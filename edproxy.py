@@ -190,21 +190,27 @@ class EDProxyFrame(wx.Frame):
                                                     self.__on_sync_parser_event,
                                                     args = (client,),
                                                     start_time = client.get_start_time())
-        self._lock.acquire()
-        self.client_listview.Append([ addr[0], addr[1] ])
-        client.set_ondisconnect_listener(self.__on_client_disconnect)
-        self._client_list.append(client)
-        self._lock.release()
+
+        try:
+            self._lock.acquire()
+            self.client_listview.Append([ addr[0], addr[1] ])
+            client.set_ondisconnect_listener(self.__on_client_disconnect)
+            self._client_list.append(client)
+        finally:
+            self._lock.release()
 
     def __on_async_parser_event(self, event):
         if event.get_line_type() == netlogline.NETLOG_LINE_TYPE.SYSTEM:
             self._edpicture.set_name_replacement(event.get_name())
             self._edconfig.set_image_name_replacement(event.get_name())
-                
-        self._lock.acquire()
-        for client in self._client_list:
-            client.send(event)
-        self._lock.release()
+               
+        try:
+            self.log.debug("Sending new event: [%s]", event) 
+            self._lock.acquire()
+            for client in self._client_list:
+                client.send(event)
+        finally:
+            self._lock.release()
 
     def __on_sync_parser_event(self, event, client):
         if event.get_line_type() == netlogline.NETLOG_LINE_TYPE.SYSTEM:
@@ -214,28 +220,36 @@ class EDProxyFrame(wx.Frame):
         client.send(event)
 
     def __on_new_client(self, client, addr):
-        self.log.info("New remote client at [%s] connected", addr)
-        self._lock.acquire()
-        for _client in self._client_list:
-            self.log.debug("Send image to: [%s]", _client.get_peername())
-            if _client.get_peername()[0] == client.get_peername()[0]:
-                _client.close()
-        self._lock.release()
+        try:
+            self.log.info("New remote client at [%s] connected", addr)
+            self._lock.acquire()
+            for _client in self._client_list:
+                if _client.get_peername()[0] == client.get_peername()[0]:
+                    self.log.debug("remote client in list close: [%s]", _client.get_peername())
+                    _client.close()
+                    self.log.debug("Done with close")
+        finally:
+            self.log.debug("Good to go with the new client.")
+            self._lock.release()
 
         _thread = threading.Thread(target = self.__new_client_thread, args = (client, addr))
         _thread.daemon = True
         _thread.start()
 
     def __on_client_disconnect(self, client):
-        peername = client.get_peername()
-        
-        self._lock.acquire()
-        self._client_list.remove(client)
-        
-        index = self.client_listview.FindItem(0, peername[0])
-        if index != -1:
-            self.client_listview.DeleteItem(index)
-        self._lock.release()
+        try:
+            peername = client.get_peername()
+            self.log.info("Disconnecting [%s]", peername)
+            
+            self._lock.acquire()
+            self._client_list.remove(client)
+            
+            index = self.client_listview.FindItem(0, peername[0])
+            if index != -1:
+                self.client_listview.DeleteItem(index)
+        finally:
+            self.log.debug("Disconnect done.")
+            self._lock.release()
         
     def __on_new_message(self, message):
         if message.get_type() == ednet.DISCOVERY_SERVICE_TYPE.QUERY:
@@ -247,11 +261,14 @@ class EDProxyFrame(wx.Frame):
 
     def __on_new_image(self, event):
         self.log.debug("Received new image: [%s]", event)
-        self._lock.acquire()
-        for client in self._client_list:
-            self.log.debug("Send image to: [%s]", client.get_peername())
-            client.send(event)
-        self._lock.release()
+        
+        try:
+            self._lock.acquire()
+            for client in self._client_list:
+                self.log.debug("Send image to: [%s]", client.get_peername())
+                client.send(event)
+        finally:
+            self._lock.release()
 
     def on_start(self, event):  # wxGlade: EDProxyFrame.<event_handler>
         netlog_path = self._edconfig.get_netlog_path()

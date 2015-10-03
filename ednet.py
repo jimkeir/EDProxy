@@ -137,7 +137,6 @@ class EDDiscoveryService():
         group = socket.inet_aton(self._broadcast_addr)
         mreq = struct.pack('4sL', group, socket.INADDR_ANY)
 
-        self.log.debug("TTL: %d", edconfig.get_instance().get_discovery_ttl())
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._sock.setblocking(0)
         self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -167,8 +166,11 @@ class EDDiscoveryService():
                 if data:
                     try:
                         message = EDDiscoveryMessageFactory.get_message(json.loads(data))
-                        self.log.debug("Received: [%s]", message)
-                        self._event_queue.post(message)
+                        
+                        if (message.get_type() != DISCOVERY_SERVICE_TYPE.ANNOUNCE or message.get_name() != "edproxy"):
+#                             self.log.debug("Received: [%s]", message)
+                            self._event_queue.post(message)
+                            self._event_queue.flush()
                     except:
                         pass
                 else:
@@ -282,6 +284,7 @@ class EDProxyClient():
         self._start_time = None
         self._sock = sock
         self._sock.settimeout(60)
+        self._peername = self._sock.getpeername()
         self._heartbeat = None
         self._heartbeat_event = threading.Event()
         
@@ -295,21 +298,21 @@ class EDProxyClient():
         self._event_queue.add_listener(disconnect_listener)
         
     def get_peername(self):
-        return self._sock.getpeername()
+        return self._peername
         
     def is_running(self):
-        self._lock.acquire()
-        ret = self._running
-        self._lock.release()
-
-        return ret
+        try:
+            self._lock.acquire()
+            return self._running
+        finally:
+            self._lock.release()
 
     def wait_for_initialized(self, timeout = None):
         if timeout and timeout < 0:
             timeout = None
 
-        self._lock.acquire()
         try:
+            self._lock.acquire()
             if not self._initialized and self._running:
                 self._conditional.wait(timeout)
 
@@ -321,27 +324,32 @@ class EDProxyClient():
             self._lock.release()
 
     def is_initialized(self):
-        self._lock.acquire()
-        ret = self._initialized
-        self._lock.release()
-
-        return ret
+        try:
+            self._lock.acquire()
+            return self._initialized
+        finally:
+            self._lock.release()
 
     def get_start_time(self):
         return self._start_time
 
     def close(self):
         if self.is_running():
-            self._lock.acquire()
-            self._running = False
-            
             try:
-                self._sock.shutdown(socket.SHUT_RDWR)
-                self._sock.close()
-            except:
-                pass
-
-            self._lock.release()
+                self._lock.acquire()
+                self._running = False
+                
+                try:
+                    self._sock.shutdown(socket.SHUT_RDWR)
+                except:
+                    pass
+    
+                try:
+                    self._sock.close()
+                except:
+                    pass
+            finally:
+                self._lock.release()
 
     def send(self, line):
         if self.is_initialized() and self.is_running():
@@ -351,6 +359,13 @@ class EDProxyClient():
                 except:
                     self.close()
         
+    def __set_running(self, enabled):
+        try:
+            self._lock.acquire()
+            self._running = enabled
+        finally:
+            self._lock.release()
+            
     def __handle_init(self, json_map):
         self._register_list = json_map['Register']
         start_time = json_map['StartTime']
@@ -377,10 +392,12 @@ class EDProxyClient():
 
             self._start_time = datetime.datetime.strptime(__date, "%Y-%m-%dT%H:%M:%S")
 
-        self._lock.acquire()
-        self._initialized = True
-        self._conditional.notify()
-        self._lock.release()
+        try:
+            self._lock.acquire()
+            self._initialized = True
+            self._conditional.notify()
+        finally:
+            self._lock.release()
 
     def __handle_heartbeat(self, json_map):
         self._heartbeat_event.set()
@@ -398,9 +415,7 @@ class EDProxyClient():
             try:
                 rr, _, _ = select.select([self._sock], [], [], 5)
             except:
-                self._lock.acquire()
-                self._running = False
-                self._lock.release()
+                self.__set_running(False)
                 
             if rr and self.is_running():
                 json_map = None
@@ -408,9 +423,7 @@ class EDProxyClient():
                 try:
                     json_map = self._sock.recv(1024)
                 except:
-                    self._lock.acquire()
-                    self._running = False
-                    self._lock.release()
+                    self.__set_running(False)
 
                 if json_map:
                     json_map = json.loads(json_map)
@@ -421,14 +434,15 @@ class EDProxyClient():
                         
         try:
             self._sock.shutdown(socket.SHUT_RDWR)
+        except:
+            pass
+
+        try:
             self._sock.close()
         except:
             pass
 
         self.log.info("Exiting proxy client read thread.")
         
-        self._lock.acquire()
-        self._running = False
-        self._lock.release()
-        
+        self.__set_running(False)        
         self._event_queue.post(self)
