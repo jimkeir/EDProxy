@@ -70,9 +70,9 @@ class EDProxyFrame(wx.Frame):
             wx.PostEvent(self.GetEventHandler(), wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.start_button.GetId()))
 
         if sys.platform == "win32":
-            self._updater = edupdate.EDWin32Updater(self, "2.0.3")#, base_url="file:///D:/Temp")
+            self._updater = edupdate.EDWin32Updater(self, "2.0.4")#, base_url="file:///D:/Temp")
         elif sys.platform == "darwin":
-            self._updater = edupdate.EDMacOSXUpdater(self, "2.0.3")#, base_url="file:///Users/wes/src/pydev/edproxy/testbed")
+            self._updater = edupdate.EDMacOSXUpdater(self, "2.0.4")#, base_url="file:///Users/wes/src/pydev/edproxy/testbed")
         
         self.Bind(edupdate.EVT_UPGRADE_EVENT, self.__on_upgrade)
                     
