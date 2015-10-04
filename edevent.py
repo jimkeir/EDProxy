@@ -4,6 +4,32 @@ from Queue import Queue
 import time
 import logging
 
+class BaseEvent(object):
+    def __init__(self, event_type, event_time):
+        self._type = event_type
+        self._time = event_time
+        
+    def get_line_type(self):
+        return self._type
+
+    def get_time(self):
+        return self._time
+        
+    def get_json(self):
+        raise ValueError("This is an interface and not intended for public use.")
+
+    def _get_json_header(self):
+        ret = dict()
+        
+        ret['Date'] = self._time.strftime('%Y-%m-%d %H:%M:%S')
+        # ret['Date'] = self._time.isoformat()
+        ret['Type'] = str(self._type)
+
+        return ret
+
+    def __str__(self):
+        return "Type [ " + str(self._type) + "], Time [" + self._time.isoformat() + "]"
+
 class _EDThreadWorker(threading.Thread):
     def __init__(self, task_queue):
         self._log = logging.getLogger("com.fussyware.edproxy")

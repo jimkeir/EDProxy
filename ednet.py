@@ -10,6 +10,7 @@ import logging
 import sys
 from wx.py.dispatcher import disconnect
 import edconfig
+import ednet
 
 #class EDServiceBase():
 #
@@ -271,6 +272,15 @@ class EDProxyServer():
         self._initialized = False
         self._lock.release()
 
+class PongEvent(ednet.BaseEvent):
+    def __init__(self):
+        ednet.BaseEvent.__init__(self, "Pong", datetime.datetime.now())
+    
+    def get_json(self):
+        value = self._get_json_header()
+
+        return json.dumps(value)
+
 class EDProxyClient():
     def __init__(self, sock):
         self.log = logging.getLogger("com.fussyware.edproxy")
@@ -353,7 +363,9 @@ class EDProxyClient():
 
     def send(self, line):
         if self.is_initialized() and self.is_running():
-            if line.get_line_type() in self._register_list:
+            _type = line.get_line_type()
+            
+            if _type in self._register_list or _type == "Pong":
                 try:
                     self._sock.send(line.get_json())
                 except:
@@ -404,7 +416,9 @@ class EDProxyClient():
     
     def __heartbeat_run(self):
         while self.is_running():
-            if not self._heartbeat_event.wait(self._heartbeat):
+            if self._heartbeat_event.wait(self._heartbeat):
+                self.send(PongEvent())
+            else:
                 self.log.error("Two heartbeats were missed! Closing down the socket.")
                 self.close()
                 
