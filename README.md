@@ -104,6 +104,7 @@ Example:
    "Type": "Init"
    "StartTime": "all" | "now" | "yyyy-mm-ddTHH:MM:SS" (local time)
    "Register": [ "System" ]
+   "Heartbeat": Integer (optional default: -1. Represents the number of seconds between heartbeats)
 }
 ```
 
@@ -113,6 +114,39 @@ Example:
    "Type": "Init"
    "StartTime": "2015-06-29T13:25:21"
    "Register": [ "System" ]
+   "Heartbeat": 30
+}
+```
+
+### Heartbeat (Ping) Event ###
+```
+{
+   "Type": "Heartbeat"
+   "Date": "yyyy-mm-ddTHH:MM:SS" (local time)
+}
+```
+
+Example:
+``` json
+{
+   "Type": "Heartbeat"
+   "Date": "2015-06-29T13:01:21"
+}
+```
+
+### Pong (Heartbeat Acknowledge) Event ###
+```
+{
+   "Type": "Pong"
+   "Date": "yyyy-mm-ddTHH:MM:SS" (local time)
+}
+```
+
+Example:
+``` json
+{
+   "Type": "Pong"
+   "Date": "2015-06-29T13:01:21"
 }
 ```
 
