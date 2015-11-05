@@ -17,6 +17,7 @@ import urllib
 import edparser
 import edconfig
 import netlogline
+import edevent
 
 _http_root_paths = []
 
@@ -25,11 +26,11 @@ def _enum(**enums):
 
 IMAGE_CONVERT_FORMAT = _enum(BMP = ".bmp", PNG = ".png", JPG = ".jpg")
 
-class _EDPictureEvent(object):
+class _EDPictureEvent(edevent.BaseEvent):
     def __init__(self, url):
+        edevent.BaseEvent.__init__(self, "Image", datetime.now)
+        
         self.url = url
-        self._time = datetime.now()
-        self._time_utc = datetime.utcnow()
         
     def get_url(self):
         return self.url
@@ -37,23 +38,8 @@ class _EDPictureEvent(object):
     def __str__(self, *args, **kwargs):
         return str(self.url)
 
-    def get_line_type(self):
-        return 'Image'
-    
-    def _get_json_header(self):
-        ret = dict()
-        
-        ret['Date'] = self._time.strftime('%Y-%m-%d %H:%M:%S')
-        ret['DateUtc'] = self._time_utc.strftime('%Y-%m-%d %H:%M:%S')
-        ret['Type'] = 'Image'
-
-        return ret
-
-    def get_json(self):
-        value = self._get_json_header()
-        value['ImageUrl'] = self.url
-        
-        return json.dumps(value)
+    def _fill_json_dict(self, json_dict):
+        json_dict['ImageUrl'] = self.url
     
 class EDPictureDirHTTPRequestHandler(SimpleHTTPRequestHandler):
     def translate_path(self, path):

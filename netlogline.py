@@ -1,4 +1,5 @@
 import json
+import edevent
 
 __all__ = [ 'NETLOG_LINE_TYPE', 'NETLOG_SHIP_STATUS', 'NetlogLineFactory' ]
 
@@ -20,39 +21,14 @@ class NetlogLineFactory():
         else:
             return None
 
-class _NetlogLine():
-    def __init__(self, line_time):
-        self._time = line_time
-
-    def get_line_type(self):
-        raise ValueError("This is an interface and not intended for public use.")
-
-    def get_time(self):
-        return self._time
-        
-    def get_json(self):
-        raise ValueError("This is an interface and not intended for public use.")
-
-    def _get_json_header(self):
-        ret = dict()
-        
-        ret['Date'] = self._time.strftime('%Y-%m-%d %H:%M:%S')
-        # ret['Date'] = self._time.isoformat()
-        ret['Type'] = str(self.get_line_type())
-
-        return ret
-
-    def __str__(self):
-        return "Time [" + self._time.isoformat() + "]"
-
-class _SystemLine(_NetlogLine):
+class _SystemLine(edevent.BaseEvent):
     def __init__(self,
                  line_time,
                  system_name,
                  num_bodies = 0,
                  position = (0, 0, 0),
                  ship_status = NETLOG_SHIP_STATUS.CRUISING):
-        _NetlogLine.__init__(self, line_time)
+        edevent.BaseEvent.__init__(self,NETLOG_LINE_TYPE.SYSTEM, line_time)
 
         self._name = system_name
         self._num_bodies = num_bodies
@@ -95,22 +71,11 @@ class _SystemLine(_NetlogLine):
 
         return None
 
-    def get_line_type(self):
-        return NETLOG_LINE_TYPE.SYSTEM
-
-    def get_json(self):
-        value = self._get_json_header()
-        value['System'] = self._name
-        value['Bodies'] = self._num_bodies
-        value['Position'] = self._position
-        value['Status'] = self._ship_status
-
-        return json.dumps(value)
-        # return json.dumps([{ 'Date': self.get_time().isoformat(),
-        #                      'System': self._name,
-        #                      'Bodies': self._num_bodies,
-        #                      'Position': self._position,
-        #                      'Status': self._ship_status }])
+    def _fill_json_dict(self, json_dict):
+        json_dict['System'] = self._name
+        json_dict['Bodies'] = self._num_bodies
+        json_dict['Position'] = self._position
+        json_dict['Status'] = self._ship_status
 
     def get_name(self):
         return self._name
@@ -125,4 +90,4 @@ class _SystemLine(_NetlogLine):
         return self._ship_status
 
     def __str__(self):
-        return _NetlogLine.__str__(self) + ", Name [" + self._name + "], Bodies [" + str(self._num_bodies) + "], Position [" + str(self._position) + "], Ship Status [" + self._ship_status + "]"
+        return edevent.BaseEvent.__str__(self) + ", Name [" + self._name + "], Bodies [" + str(self._num_bodies) + "], Position [" + str(self._position) + "], Ship Status [" + self._ship_status + "]"

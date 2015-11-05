@@ -276,10 +276,8 @@ class PongEvent(ednet.BaseEvent):
     def __init__(self):
         ednet.BaseEvent.__init__(self, "Pong", datetime.datetime.now())
     
-    def get_json(self):
-        value = self._get_json_header()
-
-        return json.dumps(value)
+    def _fill_json_dict(self, json_dict):
+        pass
 
 class EDProxyClient():
     def __init__(self, sock):

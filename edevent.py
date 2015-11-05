@@ -1,8 +1,9 @@
 import threading
-
-from Queue import Queue
 import time
 import logging
+import json
+
+from Queue import Queue
 
 class BaseEvent(object):
     def __init__(self, event_type, event_time):
@@ -16,17 +17,23 @@ class BaseEvent(object):
         return self._time
         
     def get_json(self):
-        raise ValueError("This is an interface and not intended for public use.")
+        json_dict = self._get_json_header()
+        self._fill_json_dict(json_dict)
+        
+        return json.dumps(json_dict)
 
     def _get_json_header(self):
         ret = dict()
-        
+
         ret['Date'] = self._time.strftime('%Y-%m-%d %H:%M:%S')
-        # ret['Date'] = self._time.isoformat()
+        ret['DateUtc'] = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(self._time))
         ret['Type'] = str(self._type)
 
         return ret
 
+    def _fill_json_dict(self, json_dict):
+        raise ValueError("This is an interface and not intended for public use.")
+        
     def __str__(self):
         return "Type [ " + str(self._type) + "], Time [" + self._time.isoformat() + "]"
 

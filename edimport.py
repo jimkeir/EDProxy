@@ -1,6 +1,7 @@
 import wx
 import edconfig
 import edutils
+import edevent
 
 db_path_selector = {
     0: "C:\\Program Files (x86)\\EDDiscovery",
@@ -65,7 +66,7 @@ class EDImportDialog(wx.Dialog):
         dir_path.Destroy()
         event.Skip()
         
-class _EDImportEvent(object):
+class _EDImportEvent(edevent.BaseEvent):
     def __init__(self,
                  date,
                  system_name,
@@ -77,7 +78,8 @@ class _EDImportEvent(object):
                  planetary_types = [ "NA" ],
                  notes = "",
                  ref_distances = []):
-        self._date = date
+        edevent.BaseEvent.__init__(self, "Import", date)
+
         self._system = system_name
         self._position = position
         self._main_star = main_star
@@ -88,27 +90,14 @@ class _EDImportEvent(object):
         self._notes = notes
         self._ref_distances = ref_distances
         
-    def get_line_type(self):
-        return 'Import'
-    
-    def _get_json_header(self):
-        ret = dict()
-        
-        ret['Date'] = self._time.strftime('%Y-%m-%d %H:%M:%S')
-        # ret['Date'] = self._time.isoformat()
-        ret['Type'] = str(self.get_line_type())
-
-        return ret
-
-    def get_json(self):
-        value = self._get_json_header()
-        value['System'] = self._system
-        value['Position'] = self._position
-        value['MainStar'] = self._main_star
-        value['StellarBodies'] = self._stellar_bodies
-        value['StellarTypes'] = self._stellar_types
-        value['PlanetaryBodies'] = self._planetary_bodies
-        value['PlanetaryTypes'] = self._planetary_types
-        value['Notes'] = self._notes
-        value['RefDistances'] = self._ref_distances
+    def _fill_json_dict(self, json_dict):
+        json_dict['System'] = self._system
+        json_dict['Position'] = self._position
+        json_dict['MainStar'] = self._main_star
+        json_dict['StellarBodies'] = self._stellar_bodies
+        json_dict['StellarTypes'] = self._stellar_types
+        json_dict['PlanetaryBodies'] = self._planetary_bodies
+        json_dict['PlanetaryTypes'] = self._planetary_types
+        json_dict['Notes'] = self._notes
+        json_dict['RefDistances'] = self._ref_distances
         
