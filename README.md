@@ -31,7 +31,7 @@ $ pip install Pillow
 ```
 
 ## Download ##
-Windows: [32-bit](https://bitbucket.org/westokyo/edproxy/downloads/edproxy-1.2.1.zip)
+Windows: [32-bit](https://bitbucket.org/westokyo/edproxy/downloads/LATEST-win32)
 Mac OSx: [DMG File](https://bitbucket.org/westokyo/edproxy/downloads/LATEST-macosx)
 
 Note: MacOSX should be possible. Someone with a Mac will need to run pyinstaller, or py2app, on the source to generate a binary package.
