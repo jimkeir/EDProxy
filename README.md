@@ -3,6 +3,11 @@
 Replicates the netLog entries (currently System line only) out to any registered listeners via TCP so that an application may run on other platforms. The proxy server will automatically update the E:D configuration to turn on verbose logging.
 
 # Installation #
+## Binary Download ##
+Windows: [32-bit](https://bitbucket.org/westokyo/edproxy/downloads/LATEST-win32)
+
+Mac OSx: [DMG File](https://bitbucket.org/westokyo/edproxy/downloads/LATEST-macosx)
+
 ## Prerequisites for Running Source##
 * [Python 2.7](https://www.python.org/download/releases/2.7/)
 * [wxPython](http://www.wxpython.org/download.php)
@@ -29,11 +34,6 @@ $ pip install watchdog
 
 $ pip install Pillow
 ```
-
-## Download ##
-Windows: [32-bit](https://bitbucket.org/westokyo/edproxy/downloads/LATEST-win32)
-
-Mac OSx: [DMG File](https://bitbucket.org/westokyo/edproxy/downloads/LATEST-macosx)
 
 # Design #
 ## Feature Modules ##
@@ -102,6 +102,7 @@ Example:
 ```
 {
    "Type": "Init"
+   "DateUtc": "yyyy-mm-ddTHH:MM:SS"
    "StartTime": "all" | "now" | "yyyy-mm-ddTHH:MM:SS" (local time)
    "Register": [ "System" ]
    "Heartbeat": Integer (optional default: -1. Represents the number of seconds between heartbeats)
@@ -112,6 +113,7 @@ Example:
 ``` json
 {
    "Type": "Init"
+   "DateUtc": "2015-06-29T19:25:21"
    "StartTime": "2015-06-29T13:25:21"
    "Register": [ "System" ]
    "Heartbeat": 30
@@ -122,7 +124,8 @@ Example:
 ```
 {
    "Type": "Heartbeat"
-   "Date": "yyyy-mm-ddTHH:MM:SS" (local time)
+   "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
+   "DateUtc": "yyyy-mm-ddTHH:MM:SS"
 }
 ```
 
@@ -130,7 +133,7 @@ Example:
 ``` json
 {
    "Type": "Heartbeat"
-   "Date": "2015-06-29T13:01:21"
+   "DateUtc": "2015-06-29T19:25:21"
 }
 ```
 
@@ -138,7 +141,8 @@ Example:
 ```
 {
    "Type": "Pong"
-   "Date": "yyyy-mm-ddTHH:MM:SS" (local time)
+   "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
+   "DateUtc": "yyyy-mm-ddTHH:MM:SS"
 }
 ```
 
@@ -146,7 +150,7 @@ Example:
 ``` json
 {
    "Type": "Pong"
-   "Date": "2015-06-29T13:01:21"
+   "DateUtc": "2015-06-29T19:25:21"
 }
 ```
 
@@ -154,7 +158,8 @@ Example:
 ```
 {
     "Type": "System"
-    "Date": "yyyy-mm-ddTHH:MM:SS" (local time)
+    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
+    "DateUtc": "yyyy-mm-ddTHH:MM:SS"
     "System": "System name"
     "Bodies": Number of Bodies known in System
     "Position": [x, y, z] Coordinates of ship location in system
@@ -166,7 +171,7 @@ Example:
 ``` json
 {
     "Type": "System"
-    "Date": "2015-06-29T13:01:21"
+    "DateUtc": "2015-06-29T19:25:21"
     "System": "Sol"
     "Bodies": 7
     "Position": [ -1234.56, 1234.56, 8765.87 ]
@@ -178,8 +183,8 @@ Example:
 ```
 {
     "Type": "Image"
-    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (deprecated)
-    "DateUtc": "yyyy-mm-ddTHH:MM:SS" (UTC time)
+    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
+    "DateUtc": "yyyy-mm-ddTHH:MM:SS"
     "ImageUrl": "URL"
 }
 ```
@@ -188,7 +193,7 @@ Example:
 ``` json
 {
     "Type": "Image"
-    "Date": "2015-06-29T13:01:21"
+    "DateUtc": "2015-06-29T19:25:21"
     "System": "http://192.168.1.128:8097/Sol_2015-06-29_13-01-21.png"
 }
 ```
@@ -197,8 +202,8 @@ Example:
 ```
 {
     "Type": "Import"
-    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (deprecated)
-    "DateUtc": "yyyy-mm-ddTHH:MM:SS" (UTC time)
+    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
+    "DateUtc": "yyyy-mm-ddTHH:MM:SS"
     "System": "System name"
     "Position": [x, y, z] Coordinates for the System
     "MainStar": "Stellar Type"
@@ -215,7 +220,7 @@ Example:
 ``` json
 {
     "Type": "Import"
-    "Date": "2015-06-29T13:01:21"
+    "DateUtc": "2015-06-29T19:25:21"
     "System": "Sol"
     "Position": [ 0.00, 0.00, 0.00 ]
     "MainStar": "Put in value"
