@@ -111,6 +111,7 @@ class EDSettings(wx.Dialog):
         box1.AddSpacer(5)
         box1.Add(sizer5, 0, wx.EXPAND)
         box1.Add(button_sizer, 0, wx.EXPAND | wx.ALIGN_RIGHT)
+        box1.AddSpacer(2)
         # End Setup main layout
         
         # Start General configuration settings
@@ -180,7 +181,10 @@ class EDSettings(wx.Dialog):
         self._edconfig.set_image_delete_after_convert(self._image_delete.IsChecked())
         self._edconfig.set_image_format(format_selector[self._image_format.GetSelection()])
         self._edconfig.set_image_convert_space(space_selector[self._image_replace.GetSelection()])
-        
+
+        for v in self._plugin_list:
+            v.on_ok()
+            
         event.Skip()
 
     def __on_netlog_browse(self, event):

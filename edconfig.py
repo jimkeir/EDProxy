@@ -3,6 +3,7 @@ import os
 import ConfigParser
 import edpicture
 import threading
+import datetime
 
 class EDConfig(object):
     def __init__(self):
@@ -17,7 +18,9 @@ class EDConfig(object):
         self._version = '2'
         
         self._timer = None
-        
+        self._cancel_time = None
+        self._lock = threading.Lock()
+
         self.__load()
         
     def __load(self):
@@ -78,26 +81,41 @@ class EDConfig(object):
 
             self.__write_config()
         
-    def __write_config_timeout(self):
-        try:
-            self._lock.acquire()
+    def __write_selfprotected(self):
             with open(self._inifile, "w+") as outf:
                 self._config_parser.write(outf)
                 
             self._timer = None
+            self._cancel_time = None
+
+    def __write_config_timeout(self):
+        try:
+            self._lock.acquire()
+            self.__write_selfprotected()
         finally:
             self._lock.release()
 
-    def __write_config(self):
-        try:
-            self._lock.acquire()
-            if self._timer:
-                self._timer.cancel()
-                
-            self._timer = threading.Timer(5.0, self.__write_config_timeout())
-            self._timer.start()
-        finally:
-            self._lock.release()
+    def __write_config(self, force = False):
+        if force:
+            self.__write_config_timeout()
+        else:
+            try:
+                self._lock.acquire()
+                if self._timer:
+                    self._timer.cancel()
+
+                    if not self._cancel_time:
+                        self._cancel_time = datetime.datetime.utcnow()
+                    else:
+                        _t = datetime.datetime.utcnow()
+                        
+                        if (_t - self._cancel_time).total_seconds() > 10:
+                            self.__write_selfprotected()
+                    
+                self._timer = threading.Timer(1.0, self.__write_config_timeout)
+                self._timer.start()
+            finally:
+                self._lock.release()
         
     def get_config_version(self):
         return self._version

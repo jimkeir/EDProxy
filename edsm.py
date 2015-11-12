@@ -13,6 +13,7 @@ import edparser
 import time
 import datetime
 import wx
+import logging
 
 class EDSMConfig(object):
     def __init__(self):
@@ -125,7 +126,7 @@ class EDSMConfig(object):
         self.__write_config()
 
 _config_singleton = EDSMConfig()
-def __get_config_instance():
+def get_config_instance():
     return _config_singleton
 
 class ThirdPartyPlugin(object):
@@ -170,30 +171,32 @@ class ThirdPartyPluginSettings(object):
 
 class EDSMSettings(ThirdPartyPluginSettings):
     def __init__(self, parent):
-        self._config = __get_config_instance()
+        self._config = get_config_instance()
         
         self._api_text = wx.TextCtrl(parent)
         self._cmdr_name = wx.TextCtrl(parent)
         
+        self._parent = parent
+        
     def do_layout(self, sizer):
-        sizer1 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Elite: Dangerous Star Map (EDSM)"), wx.VERTICAL)
+        sizer1 = wx.StaticBoxSizer(wx.StaticBox(self._parent, label = "Elite: Dangerous Star Map (EDSM)"), wx.VERTICAL)
 
         box1 = wx.BoxSizer(wx.HORIZONTAL)
         box2 = wx.BoxSizer(wx.HORIZONTAL)
         
-        box1.Add(wx.StaticText(self, wx.ID_ANY, _("API Key:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+        box1.Add(wx.StaticText(self._parent, wx.ID_ANY, _("API Key:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
         box1.AddSpacer(2)
         box1.Add(self._api_text, 1)
 
-        box2.Add(wx.StaticText(self, wx.ID_ANY, _("CMDR Name:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+        box2.Add(wx.StaticText(self._parent, wx.ID_ANY, _("CMDR Name:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
         box2.AddSpacer(2)
         box2.Add(self._cmdr_name, 1)
         
-        sizer1.Add(box1)
+        sizer1.Add(box1, 0, wx.EXPAND)
         sizer1.AddSpacer(5)
-        sizer1.Add(box2)        
+        sizer1.Add(box2, 0, wx.EXPAND)        
         
-        sizer.Add(sizer1)
+        sizer.Add(sizer1, 0, wx.EXPAND)
     
     def do_properties(self):
         self._api_text.ChangeValue(self._config.get_api_key())
@@ -205,10 +208,11 @@ class EDSMSettings(ThirdPartyPluginSettings):
     
 class EDSM(ThirdPartyPlugin):
     def __init__(self):
-        self._config = __get_config_instance()
+        self._log = logging.getLogger("com.fussyware.edproxy")
+        self._config = get_config_instance()
     
     def is_operational(self):
-        return (self._config.get_api_key() != '') and (self._config.get_cmdr_name() != '')
+        return ((self._config.get_api_key() != '') and (self._config.get_cmdr_name() != ''))
     
     def get_name(self):
         return "EDSM"
@@ -232,10 +236,10 @@ class EDSM(ThirdPartyPlugin):
             self._config.set_last_system(_name)
             
             _url = "http://www.edsm.net/api-logs-v1/set-log?commanderName=%s&apiKey=%s&systemName=%s&dateVisited=%s" % (urllib.quote_plus(_cmdr), urllib.quote_plus(_apikey), urllib.quote_plus(_name), urllib.quote_plus(_time))
-            print _url
+            self._log.debug(_url)
             _t0 = datetime.datetime.utcnow()
             response = urllib2.urlopen(_url)
-            print "time:", (datetime.datetime.utcnow() - _t0)
+            self._log.debug("time: %s" % str(datetime.datetime.utcnow() - _t0))
 
             ret = (response.getcode() == 200)
             

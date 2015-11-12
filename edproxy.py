@@ -27,6 +27,7 @@ import netlogline
 import edimport
 import edupdate
 from edsm import EDSM
+from __builtin__ import range
 
 class EDProxyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
@@ -88,8 +89,10 @@ class EDProxyFrame(wx.Frame):
         self.stop_button.Enable(False)
         self.client_listview.InsertColumn(0, "Connected IP Address", width = wx.LIST_AUTOSIZE_USEHEADER)
         self.client_listview.InsertColumn(1, "Port", width = wx.LIST_AUTOSIZE)
-        self.plugin_listview.InsertColumn(0, "Third-Party Plugin", width = wx.LIST_AUTOSIZE_USEHEADER)
-        self.plugin_listview.InsertColumn(1, "Status", width = wx.LIST_AUTOSIZE)
+        self.plugin_listview.InsertColumn(0, "Third-Party Plugin")
+        self.plugin_listview.InsertColumn(1, "Status")
+        self.plugin_listview.SetColumnWidth(0, wx.LIST_AUTOSIZE_USEHEADER)
+        self.plugin_listview.SetColumnWidth(1, wx.LIST_AUTOSIZE_USEHEADER)
         # end wxGlade
 
         self._lock = threading.Lock()
@@ -120,11 +123,12 @@ class EDProxyFrame(wx.Frame):
         sizer_5.Add(self.start_button, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 0)
         sizer_5.Add(self.stop_button, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 0)
 
-        sizer_3.Add(self.plugin_listview, 0, wx.ALL | wx.EXPAND, 0)
-        sizer_3.AddSpacer(2)
         sizer_3.Add(self.client_listview, 0, wx.ALL | wx.EXPAND, 0)
+        sizer_3.AddSpacer(1)
+        sizer_3.Add(self.plugin_listview, 0, wx.ALL | wx.EXPAND, 0)
         sizer_3.AddSpacer(5)
         sizer_3.Add(sizer_5, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 2)
+        sizer_3.AddSpacer(2)
 
         self.SetSizer(sizer_3)
         sizer_3.Fit(self)
@@ -307,12 +311,27 @@ class EDProxyFrame(wx.Frame):
         plugin.post(event)
         
     def __plugin_thread(self, plugin):
+        self.log.debug("New Plugin (EDSM) has been added.")
         index = self.plugin_listview.Append([ plugin.get_name(), "Transmitting..." ])
-        edparser.EDNetlogParser.parse_past_logs(self._edconfig.get_netlog_path(),
-                                                self._netlog_parser.get_netlog_prefix(),
-                                                self.__plugin_sync_parser_event,
-                                                args = (plugin,),
-                                                start_time = plugin.get_last_interaction_time())
+        self.log.debug("Parse old logs.")
+
+        # We need to parse old logs twice because it takes so long we may have missed
+        # a couple of systems at the end since the user is not going to wait for it.
+        #
+        # The first time is to pick up all systems. This may take a VERY long time
+        # initial log upload. (30+ minutes)
+        # The second time is to pick up any systems that were jumped to while
+        # transmitting the initial set. If This is NOT an initial upload then
+        # this will be very close to, or exactly, a no-op due to start time.
+        # The third time should absolutely be a no-op, but is there to 
+        # just make sure we got everything.
+        for _ in range(3):
+            edparser.EDNetlogParser.parse_past_logs(self._edconfig.get_netlog_path(),
+                                                    self._netlog_parser.get_netlog_prefix(),
+                                                    self.__plugin_sync_parser_event,
+                                                    args = (plugin,),
+                                                    start_time = plugin.get_last_interaction_time())
+        self.log.debug("Done parse old logs.")
         self.plugin_listview.SetStringItem(index, 1, "Waiting for data...")
         
         try:
@@ -358,11 +377,14 @@ class EDProxyFrame(wx.Frame):
                         
                     self._netlog_parser.start(netlog_path)
                     
-                    for value in self.plugin_list:
+                    self.log.debug("Starting up plugins.")
+                    for value in self._plugin_list:
+                        self.log.debug("Plugin %s:%s", value.get_name(), str(value.is_operational()))
                         if value.is_operational():
                             _thread = threading.Thread(target = self.__plugin_thread, args = (value,))
                             _thread.daemon = True
                             _thread.start()
+                    self.log.debug("Done plugins")
                     
                     self._proxy_server.start()
                     self._discovery_service.start()
