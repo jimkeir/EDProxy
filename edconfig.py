@@ -2,10 +2,11 @@ import edutils
 import os
 import ConfigParser
 import edpicture
+import threading
 
 class EDConfig(object):
     def __init__(self):
-        self._eduser_dir = os.path.join(edutils.get_user_dir(), ".edproxy")
+        self._eduser_dir = edutils.get_edproxy_dir()
         
         if not os.path.exists(self._eduser_dir):
             os.makedirs(self._eduser_dir)
@@ -14,6 +15,8 @@ class EDConfig(object):
         self._inifile_deprecated = os.path.join(edutils.get_app_dir(), "edproxy.ini")
         
         self._version = '2'
+        
+        self._timer = None
         
         self.__load()
         
@@ -75,9 +78,26 @@ class EDConfig(object):
 
             self.__write_config()
         
+    def __write_config_timeout(self):
+        try:
+            self._lock.acquire()
+            with open(self._inifile, "w+") as outf:
+                self._config_parser.write(outf)
+                
+            self._timer = None
+        finally:
+            self._lock.release()
+
     def __write_config(self):
-        with open(self._inifile, "w+") as outf:
-            self._config_parser.write(outf)
+        try:
+            self._lock.acquire()
+            if self._timer:
+                self._timer.cancel()
+                
+            self._timer = threading.Timer(5.0, self.__write_config_timeout())
+            self._timer.start()
+        finally:
+            self._lock.release()
         
     def get_config_version(self):
         return self._version

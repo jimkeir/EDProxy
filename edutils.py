@@ -22,6 +22,9 @@ def get_app_dir():
 def get_user_dir():
     return os.path.expanduser("~")
 
+def get_edproxy_dir():
+    return os.path.join(get_user_dir(), ".edproxy")
+
 def is_ed_running():
     for p in psutil.process_iter():
         try:

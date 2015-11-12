@@ -26,6 +26,7 @@ import edpicture
 import netlogline
 import edimport
 import edupdate
+from edsm import EDSM
 
 class EDProxyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
@@ -50,6 +51,7 @@ class EDProxyFrame(wx.Frame):
         self.stop_button = wx.Button(self, wx.ID_ANY, _("Stop"))
         
         self.client_listview = wx.ListView(self, style = wx.LC_REPORT | wx.BORDER_SUNKEN)
+        self.plugin_listview = wx.ListView(self, style = wx.LC_REPORT | wx.BORDER_SUNKEN)
         
         self.__set_properties()
         self.__do_layout()
@@ -86,6 +88,8 @@ class EDProxyFrame(wx.Frame):
         self.stop_button.Enable(False)
         self.client_listview.InsertColumn(0, "Connected IP Address", width = wx.LIST_AUTOSIZE_USEHEADER)
         self.client_listview.InsertColumn(1, "Port", width = wx.LIST_AUTOSIZE)
+        self.plugin_listview.InsertColumn(0, "Third-Party Plugin", width = wx.LIST_AUTOSIZE_USEHEADER)
+        self.plugin_listview.InsertColumn(1, "Status", width = wx.LIST_AUTOSIZE)
         # end wxGlade
 
         self._lock = threading.Lock()
@@ -102,15 +106,26 @@ class EDProxyFrame(wx.Frame):
 
         self._proxy_server = ednet.EDProxyServer(45550)
         self._proxy_server.add_listener(self.__on_new_client)
+        
+        self._plugin_operational_list = list()
+        self._plugin_list = list()
+        
+        self._plugin_list.append(EDSM())
 
     def __do_layout(self):
         # begin wxGlade: EDProxyFrame.__do_layout
         sizer_3 = wx.BoxSizer(wx.VERTICAL)
         sizer_5 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_3.Add(self.client_listview, 0, wx.ALL | wx.EXPAND, 0)
+        
         sizer_5.Add(self.start_button, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 0)
         sizer_5.Add(self.stop_button, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 0)
+
+        sizer_3.Add(self.plugin_listview, 0, wx.ALL | wx.EXPAND, 0)
+        sizer_3.AddSpacer(2)
+        sizer_3.Add(self.client_listview, 0, wx.ALL | wx.EXPAND, 0)
+        sizer_3.AddSpacer(5)
         sizer_3.Add(sizer_5, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 2)
+
         self.SetSizer(sizer_3)
         sizer_3.Fit(self)
         self.Layout()
@@ -128,12 +143,19 @@ class EDProxyFrame(wx.Frame):
             self.log.debug("Stop image acquisition service")
             self._edpicture.stop()
 
-            self.log.debug("Stop all proxy clients")
-#             self._lock.acquire()
+            self.log.debug("Stop all proxy clients and 3rd party plugins")
             self.client_listview.DeleteAllItems()
+            self.plugin_listview.DeleteAllItems()
+            
             for client in self._client_list:
                 client.close()
-#             self._lock.release()
+
+            del self._client_list[:]
+            del self._plugin_operational_list[:]
+            
+            self._client_list = list()
+            self._plugin_operational_list = list()
+            
             self.log.debug("All services stopped")
         
     def __on_upgrade(self, event):
@@ -209,6 +231,17 @@ class EDProxyFrame(wx.Frame):
             self._lock.acquire()
             for client in self._client_list:
                 client.send(event)
+                
+            for plugin in self._plugin_operational_list:
+                index = self.plugin_listview.FindItem(0, plugin.get_name())
+                
+                if index != -1:
+                    self.plugin_listview.SetStringItem(index, 1, "Transmitting...")
+                    
+                plugin.post(event)
+
+                if index != -1:
+                    self.plugin_listview.SetStringItem(index, 1, "Waiting for data...")
         finally:
             self._lock.release()
 
@@ -270,6 +303,25 @@ class EDProxyFrame(wx.Frame):
         finally:
             self._lock.release()
 
+    def __plugin_sync_parser_event(self, event, plugin):
+        plugin.post(event)
+        
+    def __plugin_thread(self, plugin):
+        index = self.plugin_listview.Append([ plugin.get_name(), "Transmitting..." ])
+        edparser.EDNetlogParser.parse_past_logs(self._edconfig.get_netlog_path(),
+                                                self._netlog_parser.get_netlog_prefix(),
+                                                self.__plugin_sync_parser_event,
+                                                args = (plugin,),
+                                                start_time = plugin.get_last_interaction_time())
+        self.plugin_listview.SetStringItem(index, 1, "Waiting for data...")
+        
+        try:
+            self._lock.acquire()
+            self._plugin_operational_list.append(plugin)
+        finally:
+            self._lock.release()
+
+
     def on_start(self, event):  # wxGlade: EDProxyFrame.<event_handler>
         netlog_path = self._edconfig.get_netlog_path()
         
@@ -305,6 +357,13 @@ class EDProxyFrame(wx.Frame):
                         self._edpicture.start()
                         
                     self._netlog_parser.start(netlog_path)
+                    
+                    for value in self.plugin_list:
+                        if value.is_operational():
+                            _thread = threading.Thread(target = self.__plugin_thread, args = (value,))
+                            _thread.daemon = True
+                            _thread.start()
+                    
                     self._proxy_server.start()
                     self._discovery_service.start()
 

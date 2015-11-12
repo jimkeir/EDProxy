@@ -3,6 +3,7 @@ import edconfig
 import edpicture
 import edutils
 import os
+import edsm
 
 format_selector = {
     0: edpicture.IMAGE_CONVERT_FORMAT.BMP,
@@ -49,6 +50,10 @@ class EDSettings(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self.__on_netlog_browse, self._netlog_browse_button)
         self.Bind(wx.EVT_BUTTON, self.__on_image_browse, self._image_browse_button)
     
+        # Add in 3rd Party Plugins
+        self._plugin_list = list()
+        self._plugin_list.append(edsm.EDSMSettings(self))
+        
         self.__do_defaults()    
         self.__do_layout()
         
@@ -77,12 +82,16 @@ class EDSettings(wx.Dialog):
                 self._image_replace.SetSelection(k)
                 break
     
+        for v in self._plugin_list:
+            v.do_properties()
+            
     def __do_layout(self):
         # The three main panel boxes
         sizer1 = wx.StaticBoxSizer(wx.StaticBox(self, label = "General"), wx.VERTICAL)
         sizer2 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Discovery Configuration"), wx.HORIZONTAL)
         sizer3 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Netlog Configuration"), wx.HORIZONTAL)
         sizer4 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Image Configuration"), wx.VERTICAL)
+        sizer5 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Third-Party Plugins"), wx.VERTICAL)
         
         box1 = wx.BoxSizer(wx.VERTICAL)
         box2 = wx.BoxSizer(wx.HORIZONTAL)
@@ -99,6 +108,8 @@ class EDSettings(wx.Dialog):
         box1.Add(sizer3, 0, wx.EXPAND)
         box1.AddSpacer(5)
         box1.Add(sizer4, 0, wx.EXPAND)
+        box1.AddSpacer(5)
+        box1.Add(sizer5, 0, wx.EXPAND)
         box1.Add(button_sizer, 0, wx.EXPAND | wx.ALIGN_RIGHT)
         # End Setup main layout
         
@@ -145,6 +156,11 @@ class EDSettings(wx.Dialog):
         sizer4.AddSpacer(5)
         sizer4.Add(self._image_delete)
         # End Image configuration settings
+        
+        # Start 3rd party plugin layout
+        for v in self._plugin_list:
+            v.do_layout(sizer5)
+        # End 3rd party plugin layout
         
         self.SetSizer(box1)
         box1.Fit(self)

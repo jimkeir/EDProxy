@@ -15,6 +15,9 @@ class BaseEvent(object):
 
     def get_time(self):
         return self._time
+    
+    def get_timeutc(self):
+        return time.gmtime(time.mktime(self._time.timetuple()))
         
     def get_json(self):
         json_dict = self._get_json_header()
@@ -26,7 +29,7 @@ class BaseEvent(object):
         ret = dict()
 
         ret['Date'] = self._time.strftime('%Y-%m-%d %H:%M:%S')
-        ret['DateUtc'] = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(self._time))
+        ret['DateUtc'] = time.strftime('%Y-%m-%d %H:%M:%S', self.get_timeutc())
         ret['Type'] = str(self._type)
 
         return ret
@@ -35,7 +38,7 @@ class BaseEvent(object):
         raise ValueError("This is an interface and not intended for public use.")
         
     def __str__(self):
-        return "Type [ " + str(self._type) + "], Time [" + self._time.isoformat() + "]"
+        return "Type [" + str(self._type) + "], Time [" + self._time.isoformat() + "]"
 
 class _EDThreadWorker(threading.Thread):
     def __init__(self, task_queue):
