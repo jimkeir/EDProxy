@@ -1,7 +1,4 @@
 import ConfigParser
-from _pyio import __metaclass__
-from abc import abstractmethod
-import abc
 import netlogline
 import urllib
 import urllib2
@@ -14,6 +11,8 @@ import time
 import datetime
 import wx
 import logging
+import plugins
+from Finder.Type_Definitions import column
 
 class EDSMConfig(object):
     def __init__(self):
@@ -129,47 +128,7 @@ _config_singleton = EDSMConfig()
 def get_config_instance():
     return _config_singleton
 
-class ThirdPartyPlugin(object):
-    __metaclass__ = abc.ABCMeta
-    
-    def __init__(self):
-        pass
-    
-    @abstractmethod
-    def get_name(self):
-        """ Get the name for this plugin. """
-        
-    @abstractmethod
-    def get_last_interaction_time(self):
-        """ Get the last time the plugin interacted with an event. """
-        
-    @abstractmethod
-    def is_operational(self):
-        """ Let Edproxy know that this 3rd party plugin is ready to take events. """
-
-    @abstractmethod
-    def post(self, event):
-        """ Post a system event to the third party listener. """
-        
-class ThirdPartyPluginSettings(object):
-    __metaclass__ = abc.ABCMeta
-    
-    def __init__(self):
-        pass
-    
-    @abstractmethod
-    def do_layout(self, sizer):
-        """ Add any UI layout elements into the given sizer. """
-        
-    @abstractmethod
-    def do_properties(self):
-        """ Setup all defaults, or properties. """
-    
-    @abstractmethod
-    def on_ok(self):
-        """ The OK button has been pressed. Save off any properties that have been modified. """
-
-class EDSMSettings(ThirdPartyPluginSettings):
+class EDSMSettings(plugins.ThirdPartyPluginSettings):
     def __init__(self, parent):
         self._config = get_config_instance()
         
@@ -181,20 +140,32 @@ class EDSMSettings(ThirdPartyPluginSettings):
     def do_layout(self, sizer):
         sizer1 = wx.StaticBoxSizer(wx.StaticBox(self._parent, label = "Elite: Dangerous Star Map (EDSM)"), wx.VERTICAL)
 
-        box1 = wx.BoxSizer(wx.HORIZONTAL)
-        box2 = wx.BoxSizer(wx.HORIZONTAL)
-        
-        box1.Add(wx.StaticText(self._parent, wx.ID_ANY, _("API Key:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
-        box1.AddSpacer(2)
-        box1.Add(self._api_text, 1)
+        grid1 = wx.FlexGridSizer(rows = 2, cols = 2, hgap = 2, vgap = 5)
 
-        box2.Add(wx.StaticText(self._parent, wx.ID_ANY, _("CMDR Name:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
-        box2.AddSpacer(2)
-        box2.Add(self._cmdr_name, 1)
+        grid1.Add(wx.StaticText(self._parent, wx.ID_ANY, _("API Key:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_RIGHT)
+        grid1.Add(self._api_text, flag = wx.EXPAND)
+
+        grid1.Add(wx.StaticText(self._parent, wx.ID_ANY, _("CMDR Name:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_RIGHT)
+        grid1.Add(self._cmdr_name, flag = wx.EXPAND)
         
-        sizer1.Add(box1, 0, wx.EXPAND)
-        sizer1.AddSpacer(5)
-        sizer1.Add(box2, 0, wx.EXPAND)        
+        grid1.AddGrowableCol(1, proportion = 1)
+        
+        sizer1.Add(grid1, 0, wx.EXPAND | wx.ALL)
+        
+#         box1 = wx.BoxSizer(wx.HORIZONTAL)
+#         box2 = wx.BoxSizer(wx.HORIZONTAL)
+#         
+#         box1.Add(wx.StaticText(self._parent, wx.ID_ANY, _("API Key:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+#         box1.AddSpacer(2)
+#         box1.Add(self._api_text, 1)
+# 
+#         box2.Add(wx.StaticText(self._parent, wx.ID_ANY, _("CMDR Name:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+#         box2.AddSpacer(2)
+#         box2.Add(self._cmdr_name, 1)
+#         
+#         sizer1.Add(box1, 0, wx.EXPAND)
+#         sizer1.AddSpacer(5)
+#         sizer1.Add(box2, 0, wx.EXPAND)        
         
         sizer.Add(sizer1, 0, wx.EXPAND)
     
@@ -206,7 +177,7 @@ class EDSMSettings(ThirdPartyPluginSettings):
         self._config.set_api_key(self._api_text.GetValue())
         self._config.set_cmdr_name(self._cmdr_name.GetValue())
     
-class EDSM(ThirdPartyPlugin):
+class EDSM(plugins.ThirdPartyPlugin):
     def __init__(self):
         self._log = logging.getLogger("com.fussyware.edproxy")
         self._config = get_config_instance()
