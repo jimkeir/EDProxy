@@ -12,7 +12,6 @@ import datetime
 import wx
 import logging
 import plugins
-from Finder.Type_Definitions import column
 
 class EDSMConfig(object):
     def __init__(self):
