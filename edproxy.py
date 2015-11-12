@@ -26,6 +26,7 @@ import edpicture
 import netlogline
 import edimport
 import edupdate
+from edicon import edicon
 from edsm import EDSM
 from __builtin__ import range
 
@@ -87,7 +88,8 @@ class EDProxyFrame(wx.Frame):
     def __set_properties(self):
         # begin wxGlade: EDProxyFrame.__set_properties
         self.SetTitle(_("Elite: Dangerous Proxy - v" + self._version_number))
-        self.SetIcon(wx.Icon('edicon.ico', wx.BITMAP_TYPE_ICO))
+        self.SetIcon(edicon.GetIcon())
+#         self.SetIcon(wx.Icon('edicon.ico', wx.BITMAP_TYPE_ICO))
         self.SetMinClientSize(wx.Size(400, -1))
         self.SetMinSize(wx.Size(400, -1))
         self.stop_button.Enable(False)

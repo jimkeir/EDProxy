@@ -25,7 +25,7 @@ while [ $# -gt 0 ]; do
       shift
 done
 
-pyinstaller --noconfirm --windowed --icon=edicon.icns --clean edproxy.py
+pyinstaller --clean --noconfirm --windowed --icon=edicon.icns edproxy.py
 
 CUR_DIR=`pwd`
 DIST_DIR=$CUR_DIR/dist/edproxy.app/Contents/MacOS
