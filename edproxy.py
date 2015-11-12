@@ -34,6 +34,8 @@ class EDProxyFrame(wx.Frame):
         self.log = logging.getLogger("com.fussyware.edproxy");
         self.log.setLevel(logging.DEBUG)
         
+        self._version_number = "2.1.1"
+        
         # begin wxGlade: EDProxyFrame.__init__
         kwds["style"] = wx.CAPTION | wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.CLIP_CHILDREN
         wx.Frame.__init__(self, *args, **kwds)
@@ -72,8 +74,6 @@ class EDProxyFrame(wx.Frame):
         if self._edconfig.get_edproxy_startup():
             wx.PostEvent(self.GetEventHandler(), wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.start_button.GetId()))
 
-        self._version_number = "2.1.0"
-        
         if sys.platform == "win32":
             self._updater = edupdate.EDWin32Updater(self, self._version_number)#, base_url="file:///D:/Temp")
         elif sys.platform == "darwin":
@@ -86,15 +86,17 @@ class EDProxyFrame(wx.Frame):
 
     def __set_properties(self):
         # begin wxGlade: EDProxyFrame.__set_properties
-        self.SetTitle(_("Elite: Dangerous Proxy"))
+        self.SetTitle(_("Elite: Dangerous Proxy - v" + self._version_number))
         self.SetIcon(wx.Icon('edicon.ico', wx.BITMAP_TYPE_ICO))
+        self.SetMinClientSize(wx.Size(400, -1))
+        self.SetMinSize(wx.Size(400, -1))
         self.stop_button.Enable(False)
         self.client_listview.InsertColumn(0, "Connected IP Address", width = wx.LIST_AUTOSIZE_USEHEADER)
         self.client_listview.InsertColumn(1, "Port", width = wx.LIST_AUTOSIZE)
         self.plugin_listview.InsertColumn(0, "Third-Party Plugin")
         self.plugin_listview.InsertColumn(1, "Status")
         self.plugin_listview.SetColumnWidth(0, wx.LIST_AUTOSIZE_USEHEADER)
-        self.plugin_listview.SetColumnWidth(1, wx.LIST_AUTOSIZE_USEHEADER)
+        self.plugin_listview.SetColumnWidth(1, 200)
         # end wxGlade
 
         self._lock = threading.Lock()
@@ -133,8 +135,9 @@ class EDProxyFrame(wx.Frame):
         sizer_3.AddSpacer(2)
 
         self.SetSizer(sizer_3)
-        sizer_3.Fit(self)
+#         sizer_3.Fit(self)
         self.Layout()
+        self.SetSize(self.GetEffectiveMinSize())
         self.Centre()
         # end wxGlade
 
