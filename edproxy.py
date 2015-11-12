@@ -35,7 +35,7 @@ class EDProxyFrame(wx.Frame):
         self.log = logging.getLogger("com.fussyware.edproxy");
         self.log.setLevel(logging.DEBUG)
         
-        self._version_number = "2.1.1"
+        self._version_number = "2.1.2"
         
         # begin wxGlade: EDProxyFrame.__init__
         kwds["style"] = wx.CAPTION | wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.CLIP_CHILDREN
