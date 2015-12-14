@@ -29,6 +29,7 @@ import edupdate
 from edicon import edicon
 from edsm import EDSM
 from __builtin__ import range
+import edsendkeys
 
 class EDProxyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
@@ -228,6 +229,7 @@ class EDProxyFrame(wx.Frame):
             self._lock.acquire()
             self.client_listview.Append([ addr[0], addr[1] ])
             client.set_ondisconnect_listener(self.__on_client_disconnect)
+            client.set_onrecv_listener(self.__on_net_recv)
             self._client_list.append(client)
         finally:
             self._lock.release()
@@ -294,6 +296,10 @@ class EDProxyFrame(wx.Frame):
         finally:
             self.log.debug("Disconnect done.")
             self._lock.release()
+        
+    def __on_net_recv(self, event):
+        if event.get_line_type() == 'SendKeys':
+            edsendkeys.sendkeys(event.get_keys())
         
     def __on_new_message(self, message):
         if message.get_type() == ednet.DISCOVERY_SERVICE_TYPE.QUERY:

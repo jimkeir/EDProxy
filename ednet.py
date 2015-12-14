@@ -11,6 +11,7 @@ import sys
 from wx.py.dispatcher import disconnect
 import edconfig
 import ednet
+import edevent
 
 #class EDServiceBase():
 #
@@ -272,13 +273,32 @@ class EDProxyServer():
         self._initialized = False
         self._lock.release()
 
-class PongEvent(ednet.BaseEvent):
+class PongEvent(edevent.BaseEvent):
     def __init__(self):
-        ednet.BaseEvent.__init__(self, "Pong", datetime.datetime.now())
+        edevent.BaseEvent.__init__(self, "Pong", datetime.datetime.now())
     
     def _fill_json_dict(self, json_dict):
         pass
 
+class SendKeysEvent(edevent.BaseEvent):
+    def __init__(self, json_dict):
+        edevent.BaseEvent.__init__(self, "SendKeys", datetime.datetime.now())
+        self._recv_data = json_dict['Keys']
+
+    def _fill_json_dict(self, json_dict):
+        json_dict['Keys'] = self._recv_data
+    
+    def get_keys(self):
+        return self._recv_data
+        
+class RecvNetEventFactory(object):
+    @staticmethod
+    def get_recv_event(json_dict):
+        if json_dict['Type'] == 'SendKeys':
+            return SendKeysEvent(json_dict)
+        else:
+            return None
+        
 class EDProxyClient():
     def __init__(self, sock):
         self.log = logging.getLogger("com.fussyware.edproxy")
@@ -297,6 +317,7 @@ class EDProxyClient():
         self._heartbeat_event = threading.Event()
         
         self._event_queue = EDEventQueue()
+        self._recv_event_queue = EDEventQueue()
 
         _thread = threading.Thread(target = self.__run)
         _thread.daemon = True
@@ -304,6 +325,9 @@ class EDProxyClient():
 
     def set_ondisconnect_listener(self, disconnect_listener):
         self._event_queue.add_listener(disconnect_listener)
+        
+    def set_onrecv_listener(self, recv_listener):
+        self._recv_event_queue.add_listener(recv_listener)
         
     def get_peername(self):
         return self._peername
@@ -441,8 +465,12 @@ class EDProxyClient():
                     json_map = json.loads(json_map)
                     if json_map['Type'] == 'Init':
                         self.__handle_init(json_map)
-                    if json_map['Type'] == 'Heartbeat':
+                    elif json_map['Type'] == 'Heartbeat':
                         self.__handle_heartbeat(json_map)
+                    else:
+                        event = RecvNetEventFactory.get_recv_event(json_map)
+                        if event:
+                            self._recv_event_queue.post(event)
                         
         try:
             self._sock.shutdown(socket.SHUT_RDWR)
