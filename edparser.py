@@ -22,7 +22,10 @@ def _get_log_files(path, logfile_prefix):
 
     for f in filenames:
         if (f.startswith(logfile_prefix)):
-            name = datetime.datetime.strptime(f.split(".")[1], "%y%m%d%H%M")
+            try:
+                name = datetime.datetime.strptime(f.split(".")[1], "%y%m%d%H%M")
+            except ValueError:
+                name = datetime.datetime.strptime(f.split(".")[1], "%y%m%d%H%M%S")
 
             netlog_list.append((name, path + f))
 
