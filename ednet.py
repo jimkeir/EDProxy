@@ -390,7 +390,8 @@ class EDProxyClient():
             if _type in self._register_list or _type == "Pong":
                 try:
                     self._sock.send(line.get_json())
-                except:
+                except Exception, e:
+                    self.log.exception(e)
                     self.close()
         
     def __set_running(self, enabled):
@@ -439,6 +440,7 @@ class EDProxyClient():
     def __heartbeat_run(self):
         while self.is_running():
             if self._heartbeat_event.wait(self._heartbeat):
+#                 self.log.debug("Recieved a heartbeat message return pong.")
                 self.send(PongEvent())
             else:
                 self.log.error("Two heartbeats were missed! Closing down the socket.")

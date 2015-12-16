@@ -28,7 +28,7 @@ IMAGE_CONVERT_FORMAT = _enum(BMP = ".bmp", PNG = ".png", JPG = ".jpg")
 
 class _EDPictureEvent(edevent.BaseEvent):
     def __init__(self, url):
-        edevent.BaseEvent.__init__(self, "Image", datetime.now)
+        edevent.BaseEvent.__init__(self, "Image", datetime.now())
         
         self.url = url
         
@@ -159,6 +159,7 @@ class EDPictureMonitor(PatternMatchingEventHandler):
                 copying = False
                 
     def __run_imaged(self, events):
+        self.log.debug("New image created. Process...")
         pathname, filename = os.path.split(events.src_path)
         
         if self._convert_format != IMAGE_CONVERT_FORMAT.BMP:
@@ -195,9 +196,13 @@ class EDPictureMonitor(PatternMatchingEventHandler):
             except Exception as e:
                 self.log.error("Failed converting image! [%s]", e)
         
+        self.log.debug("Check to see if we converted.")
         if converted:
+            self.log.debug("Yep, we converted so send the event.")
             self._event_queue.post(_EDPictureEvent(self._url + urllib.quote_plus(filename)))
     
+        self.log.debug("Finished handling new image.")
+        
     def __run_httpd(self):
         if not self._name_replacement:
             config_path, _ = os.path.split(os.path.normpath(edconfig.get_instance().get_netlog_path()))
