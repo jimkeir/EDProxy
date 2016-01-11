@@ -5,6 +5,7 @@ import edpicture
 import threading
 import datetime
 import sys
+from __builtin__ import False
 
 class EDConfig(object):
     def __init__(self):
@@ -22,6 +23,9 @@ class EDConfig(object):
         self._cancel_time = None
         self._lock = threading.Lock()
 
+        self._was_created = False
+        self._was_upgraded = False
+        
         self.__load()
         
     def __load(self):
@@ -50,6 +54,8 @@ class EDConfig(object):
             self._config_parser.set('Discovery', 'ttl', '1')
             self.__write_config()
 
+            self._was_upgraded = True
+            
             old_value = '2'
         
         if old_value == '2':
@@ -67,6 +73,8 @@ class EDConfig(object):
                 
             self._config_parser.set('Netlog', 'appconfig_path', value)
             self.__write_config()
+            
+            self._was_upgraded = True
             
             old_value = '3'
 
@@ -101,6 +109,8 @@ class EDConfig(object):
             self._config_parser.set('Image', 'name_replacement', '')
 
             self.__write_config()
+            
+            self._was_created = True
         
     def __write_selfprotected(self):
             with open(self._inifile, "w+") as outf:
@@ -155,6 +165,12 @@ class EDConfig(object):
                 return edpath
 
         return ""
+    
+    def was_created(self):
+        return self._was_created
+    
+    def was_upgraded(self):
+        return self._was_upgraded
     
     def get_config_version(self):
         return self._version

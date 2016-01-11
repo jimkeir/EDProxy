@@ -36,7 +36,7 @@ class EDProxyFrame(wx.Frame):
         self.log = logging.getLogger("com.fussyware.edproxy");
         self.log.setLevel(logging.DEBUG)
         
-        self._version_number = "2.1.4"
+        self._version_number = "2.1.5"
         
         # begin wxGlade: EDProxyFrame.__init__
         kwds["style"] = wx.CAPTION | wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.CLIP_CHILDREN
@@ -138,6 +138,34 @@ class EDProxyFrame(wx.Frame):
         # end wxGlade
 
     def __finish_init_thread(self):
+        if self._edconfig.was_created():
+            message = "Welcome to Edproxy!\n\n"
+            message = message + "Edproxy allows you to send notifications out to other applications.\n\n"
+            message = message + "From within Settings you may set your E:D log, and AppConfig.xml, paths. Defaults will be chosen for you for normal installations.\n\n"
+            message = message + "You may also configure how you wish Edproxy to start-up and where to look for new E:D images."
+            msg = wx.MessageDialog(parent = self,
+                                   message = message,
+                                   caption = "Welcome!",
+                                   style = wx.OK | wx.ICON_INFORMATION)
+            msg.ShowModal()
+            msg.Destroy()
+
+            settings = edsettings.EDSettings(self, wx.ID_ANY, "Settings Configuration")
+            settings.ShowModal()
+            settings.Destroy()
+        elif self._edconfig.was_upgraded():
+            message = "Edproxy has been successfully upgraded to version " + self._version_number + "\n\n"
+            message = message + "New to this release is:\n"
+            message = message + "- Now using AppConfigLocal.xml instead of AppConfig.xml.\n"
+            message = message + "- Separated out the net Log directory and AppConfig directories in the configuration and settings.\n"
+            message = message + "- Auto-detect directory paths if none have been set."
+            msg = wx.MessageDialog(parent = self,
+                                   message = message,
+                                   caption = "Upgrade to Version " + self._version_number,
+                                   style = wx.OK | wx.ICON_INFORMATION)
+            msg.ShowModal()
+            msg.Destroy()
+            
         paths_are_good = False
         
         while not paths_are_good:
@@ -161,15 +189,11 @@ class EDProxyFrame(wx.Frame):
                                        message = message,
                                        caption = "Verbose Logging Setup Error",
                                        style = wx.OK | wx.ICON_EXCLAMATION)
-                print "show dialog"
                 msg.ShowModal()
-                print "done dialog"
                 msg.Destroy()
             
                 settings = edsettings.EDSettings(self, wx.ID_ANY, "Settings Configuration")
-                print "show settings"
                 settings.ShowModal()
-                print "done settings"
                 settings.Destroy()
             else:
                 self.__check_and_restart_ed()
