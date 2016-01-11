@@ -73,49 +73,9 @@ class EDProxyFrame(wx.Frame):
         
         self._edconfig = edconfig.get_instance()
 
-        paths_are_good = False
-        
-        while not paths_are_good:
-            netlog_path = self._edconfig.get_netlog_path()
-            appconfig_path = self._edconfig.get_appconfig_path()
-             
-            if not netlog_path or not appconfig_path or not os.path.exists(netlog_path) or not os.path.exists(os.path.join(appconfig_path, "AppConfig.xml")):
-                message = "Could not locate E:D logging directory, or configuration directory. "
-                message = message + "Please update the settings providing the appropriate directories.\n\n"
-                message = message + "Some common log directories are:\n"
-                
-                for p in edutils.get_potential_log_dirs():
-                    message = message + p + "\n"
-                    
-                message = message + "\nSome common AppConfig directories are:\n"
-                
-                for p in edutils.get_potential_appconfig_dirs():
-                    message = message + p + "\n"
-                    
-                msg = wx.MessageDialog(parent = self,
-                                       message = message,
-                                       caption = "Verbose Logging Setup Error",
-                                       style = wx.OK | wx.ICON_EXCLAMATION)
-                msg.ShowModal()
-                msg.Destroy()
-            
-                settings = edsettings.EDSettings(self, wx.ID_ANY, "Settings Configuration")
-                settings.ShowModal()
-                settings.Destroy()
-            else:
-                self.__check_and_restart_ed()
-                paths_are_good = True
-        
-        if self._edconfig.get_edproxy_startup():
-            wx.PostEvent(self.GetEventHandler(), wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.start_button.GetId()))
+        _thread = threading.Thread(target = self.__finish_init_thread)
+        _thread.start()
 
-        if sys.platform == "win32":
-            self._updater = edupdate.EDWin32Updater(self, self._version_number)#, base_url="file:///D:/Temp")
-        elif sys.platform == "darwin":
-            self._updater = edupdate.EDMacOSXUpdater(self, self._version_number)#, base_url="file:///Users/wes/src/pydev/edproxy/testbed")
-        
-        self.Bind(edupdate.EVT_UPGRADE_EVENT, self.__on_upgrade)
-                    
 #         if self._edconfig.get_start_minimized():
 #             print "hide"
 
@@ -177,6 +137,54 @@ class EDProxyFrame(wx.Frame):
         self.Centre()
         # end wxGlade
 
+    def __finish_init_thread(self):
+        paths_are_good = False
+        
+        while not paths_are_good:
+            netlog_path = self._edconfig.get_netlog_path()
+            appconfig_path = self._edconfig.get_appconfig_path()
+             
+            if not netlog_path or not appconfig_path or not os.path.exists(netlog_path) or not os.path.exists(os.path.join(appconfig_path, "AppConfig.xml")):
+                message = "Could not locate E:D logging directory, or configuration directory. "
+                message = message + "Please update the settings providing the appropriate directories.\n\n"
+                message = message + "Some common log directories are:\n"
+                
+                for p in edutils.get_potential_log_dirs():
+                    message = message + p + "\n"
+                    
+                message = message + "\nSome common AppConfig directories are:\n"
+                
+                for p in edutils.get_potential_appconfig_dirs():
+                    message = message + p + "\n"
+                    
+                msg = wx.MessageDialog(parent = self,
+                                       message = message,
+                                       caption = "Verbose Logging Setup Error",
+                                       style = wx.OK | wx.ICON_EXCLAMATION)
+                print "show dialog"
+                msg.ShowModal()
+                print "done dialog"
+                msg.Destroy()
+            
+                settings = edsettings.EDSettings(self, wx.ID_ANY, "Settings Configuration")
+                print "show settings"
+                settings.ShowModal()
+                print "done settings"
+                settings.Destroy()
+            else:
+                self.__check_and_restart_ed()
+                paths_are_good = True
+        
+        if self._edconfig.get_edproxy_startup():
+            wx.PostEvent(self.GetEventHandler(), wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.start_button.GetId()))
+
+        if sys.platform == "win32":
+            self._updater = edupdate.EDWin32Updater(self, self._version_number)#, base_url="file:///D:/Temp")
+        elif sys.platform == "darwin":
+            self._updater = edupdate.EDMacOSXUpdater(self, self._version_number)#, base_url="file:///Users/wes/src/pydev/edproxy/testbed")
+        
+        self.Bind(edupdate.EVT_UPGRADE_EVENT, self.__on_upgrade)
+    
     def __check_and_restart_ed(self):
         appconfig_path = self._edconfig.get_appconfig_path()             
         local_appconfig_path = os.path.join(appconfig_path, "AppConfigLocal.xml")
@@ -196,7 +204,7 @@ class EDProxyFrame(wx.Frame):
                 print "show message for restart."
                 msg = wx.MessageDialog(parent = self,
                                        message = "Elite: Dangerous is currently running and Verbose logging will not take effect until Elite: Dangerous is restarted. Please shutdown Elite: Dangerous before continuing.",
-                                       caption = "Verbose Logging Setup Error",
+                                       caption = "Restart of Elite: Dangerous Required",
                                        style = wx.OK | wx.ICON_EXCLAMATION)
                 msg.ShowModal()
                 msg.Destroy()
