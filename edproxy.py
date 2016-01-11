@@ -73,6 +73,39 @@ class EDProxyFrame(wx.Frame):
         
         self._edconfig = edconfig.get_instance()
 
+        paths_are_good = False
+        
+        while not paths_are_good:
+            netlog_path = self._edconfig.get_netlog_path()
+            appconfig_path = self._edconfig.get_appconfig_path()
+             
+            if not netlog_path or not appconfig_path or not os.path.exists(netlog_path) or not os.path.exists(os.path.join(appconfig_path, "AppConfig.xml")):
+                message = "Could not locate E:D logging directory, or configuration directory. "
+                message = message + "Please update the settings providing the appropriate directories.\n\n"
+                message = message + "Some common log directories are:\n"
+                
+                for p in edutils.get_potential_log_dirs():
+                    message = message + p + "\n"
+                    
+                message = message + "\nSome common AppConfig directories are:\n"
+                
+                for p in edutils.get_potential_appconfig_dirs():
+                    message = message + p + "\n"
+                    
+                msg = wx.MessageDialog(parent = self,
+                                       message = message,
+                                       caption = "Verbose Logging Setup Error",
+                                       style = wx.OK | wx.ICON_EXCLAMATION)
+                msg.ShowModal()
+                msg.Destroy()
+            
+                settings = edsettings.EDSettings(self, wx.ID_ANY, "Settings Configuration")
+                settings.ShowModal()
+                settings.Destroy()
+            else:
+                self.__check_and_restart_ed()
+                paths_are_good = True
+        
         if self._edconfig.get_edproxy_startup():
             wx.PostEvent(self.GetEventHandler(), wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.start_button.GetId()))
 
@@ -143,6 +176,30 @@ class EDProxyFrame(wx.Frame):
         self.SetSize(self.GetEffectiveMinSize())
         self.Centre()
         # end wxGlade
+
+    def __check_and_restart_ed(self):
+        appconfig_path = self._edconfig.get_appconfig_path()             
+        local_appconfig_path = os.path.join(appconfig_path, "AppConfigLocal.xml")
+        restart_ed = False
+         
+        if not os.path.exists(local_appconfig_path):
+            edutils.create_local_appconfig(appconfig_path)
+            restart_ed = True
+        elif not edutils.is_verbose_enabled(local_appconfig_path):
+            edutils.set_verbose_enabled(local_appconfig_path, True)
+            edutils.set_datestamp_enabled(local_appconfig_path, True)
+            restart_ed = True
+
+        if restart_ed:
+            print "we should restart ed"
+            while edutils.is_ed_running():
+                print "show message for restart."
+                msg = wx.MessageDialog(parent = self,
+                                       message = "Elite: Dangerous is currently running and Verbose logging will not take effect until Elite: Dangerous is restarted. Please shutdown Elite: Dangerous before continuing.",
+                                       caption = "Verbose Logging Setup Error",
+                                       style = wx.OK | wx.ICON_EXCLAMATION)
+                msg.ShowModal()
+                msg.Destroy()
 
     def __stop(self):
         if not self.start_button.IsEnabled():
@@ -356,66 +413,57 @@ class EDProxyFrame(wx.Frame):
 
     def on_start(self, event):  # wxGlade: EDProxyFrame.<event_handler>
         netlog_path = self._edconfig.get_netlog_path()
+        appconfig_path = os.path.join(self._edconfig.get_appconfig_path(), "AppConfigLocal.xml")
         
-        if netlog_path and os.path.exists(netlog_path):
+        if not netlog_path or not os.path.exists(netlog_path):
+            msg = wx.MessageDialog(parent = self,
+                       message = "Error: Invalid log path specified!",
+                       caption = "Error starting proxy server",
+                       style = wx.OK | wx.ICON_ERROR)
+            msg.ShowModal()
+            msg.Destroy()
+        elif not appconfig_path or not os.path.exists(appconfig_path):
+            msg = wx.MessageDialog(parent = self,
+                                   message = "Error: Cannot find E:D configuration file!",
+                                   caption = "Error starting proxy server",
+                                   style = wx.OK | wx.ICON_ERROR)
+            msg.ShowModal()
+            msg.Destroy()
+        else:
             self.start_button.Disable()
 
             try:
-                config_path, _ = os.path.split(os.path.normpath(netlog_path))
-                config_path = os.path.join(config_path, "AppConfig.xml")
-
-                if os.path.exists(config_path):
-                    self._netlog_parser.set_netlog_prefix(edutils.get_logfile_prefix(config_path))
-
-                    if not edutils.is_verbose_enabled(config_path):
-                        while edutils.is_ed_running():
-                            msg = wx.MessageDialog(parent = self,
-                                                   message = "Elite: Dangerous is currently running and Verbose logging will not take effect until Elite: Dangerous is restarted. Please shutdown Elite: Dangerous before continuing.",
-                                                   caption = "Verbose Logging Setup Error",
-                                                   style = wx.OK | wx.ICON_EXCLAMATION)
-                            msg.ShowModal()
-                            msg.Destroy()
-
-                        edutils.set_verbose_enabled(config_path, True)
-                        edutils.set_datestamp_enabled(config_path, True)
-
-                    if os.path.exists(self._edconfig.get_image_path()):
-                        self._edpicture.set_image_path(self._edconfig.get_image_path())
-                        self._edpicture.set_convert_format(self._edconfig.get_image_format())
-                        self._edpicture.set_delete_after_convert(self._edconfig.get_image_delete_after_convert())
-                        self._edpicture.set_convert_space(self._edconfig.get_image_convert_space())
-                        self._edpicture.set_name_replacement(self._edconfig.get_image_name_replacement())
-                        
-                        self._edpicture.start()
-                        
-                    self._netlog_parser.start(netlog_path)
+                self.__check_and_restart_ed()
+                self._netlog_parser.set_netlog_prefix(edutils.get_logfile_prefix(appconfig_path))
+                
+                if os.path.exists(self._edconfig.get_image_path()):
+                    self._edpicture.set_image_path(self._edconfig.get_image_path())
+                    self._edpicture.set_convert_format(self._edconfig.get_image_format())
+                    self._edpicture.set_delete_after_convert(self._edconfig.get_image_delete_after_convert())
+                    self._edpicture.set_convert_space(self._edconfig.get_image_convert_space())
+                    self._edpicture.set_name_replacement(self._edconfig.get_image_name_replacement())
                     
-                    self.log.debug("Starting up plugins.")
-                    for value in self._plugin_list:
-                        self.log.debug("Plugin %s:%s", value.get_name(), str(value.is_operational()))
-                        if value.is_operational():
-                            _thread = threading.Thread(target = self.__plugin_thread, args = (value,))
-                            _thread.daemon = True
-                            _thread.start()
-                    self.log.debug("Done plugins")
+                    self._edpicture.start()
                     
-                    self._proxy_server.start()
-                    self._discovery_service.start()
+                self._netlog_parser.start(netlog_path)
+                
+                self.log.debug("Starting up plugins.")
+                for value in self._plugin_list:
+                    self.log.debug("Plugin %s:%s", value.get_name(), str(value.is_operational()))
+                    if value.is_operational():
+                        _thread = threading.Thread(target = self.__plugin_thread, args = (value,))
+                        _thread.daemon = True
+                        _thread.start()
+                self.log.debug("Done plugins")
+                
+                self._proxy_server.start()
+                self._discovery_service.start()
 
-                    # Announce to the world that EDProxy is up and running.
-                    self._discovery_service.send(ednet.EDDiscoveryMessageAnnounce('edproxy', edutils.get_ipaddr(), 45550))
+                # Announce to the world that EDProxy is up and running.
+                self._discovery_service.send(ednet.EDDiscoveryMessageAnnounce('edproxy', edutils.get_ipaddr(), 45550))
 
 #                     self._import_menu.Enable(True)
-                    self.stop_button.Enable()
-                else:
-                    msg = wx.MessageDialog(parent = self,
-                                           message = "Error: Cannot find E:D configuration file!",
-                                           caption = "Error starting proxy server",
-                                           style = wx.OK | wx.ICON_ERROR)
-                    msg.ShowModal()
-                    msg.Destroy()
-
-                    self.start_button.Enable()
+                self.stop_button.Enable()
             except:
                 self.log.error("There was an error starting the proxy.", exc_info = sys.exc_info())
                 
@@ -434,13 +482,6 @@ class EDProxyFrame(wx.Frame):
                                        style = wx.OK | wx.ICON_ERROR)
                 msg.ShowModal()
                 msg.Destroy()
-        else:
-            msg = wx.MessageDialog(parent = self,
-                                   message = "Error: Invalid log path specified!",
-                                   caption = "Error starting proxy server",
-                                   style = wx.OK | wx.ICON_ERROR)
-            msg.ShowModal()
-            msg.Destroy()
             
         event.Skip()
 

@@ -4,6 +4,7 @@ import ConfigParser
 import edpicture
 import threading
 import datetime
+import sys
 
 class EDConfig(object):
     def __init__(self):
@@ -15,7 +16,7 @@ class EDConfig(object):
         self._inifile = os.path.join(self._eduser_dir, "edproxy.ini")
         self._inifile_deprecated = os.path.join(edutils.get_app_dir(), "edproxy.ini")
         
-        self._version = '2'
+        self._version = '3'
         
         self._timer = None
         self._cancel_time = None
@@ -42,13 +43,32 @@ class EDConfig(object):
             self.__create_default_config()
 
     def __upgrade(self, old_value, new_value):
-        self._config_parser.set('Version', 'version', self._version)
+        self._config_parser.set('Version', 'version', new_value)
 
         if old_value == '1':            
             self._config_parser.add_section('Discovery')
             self._config_parser.set('Discovery', 'ttl', '1')
-            
+            self.__write_config()
+
             old_value = '2'
+        
+        if old_value == '2':
+            value = self.__find_appconfig_path()
+            
+            if len(value) == 0:
+                log_path = self.get_netlog_path()
+                
+                if len(log_path) > 0:
+                    config_path, _ = os.path.split(os.path.normpath(log_path))
+                    config_path = os.path.join(config_path, "AppConfig.xml")
+                    
+                    if (os.path.exists(config_path)):
+                        value = config_path
+                
+            self._config_parser.set('Netlog', 'appconfig_path', value)
+            self.__write_config()
+            
+            old_value = '3'
 
     def __create_default_config(self, legacy_parser = None):
             self._config_parser = ConfigParser.SafeConfigParser()
@@ -70,9 +90,10 @@ class EDConfig(object):
             if legacy_parser:
                 self._config_parser.set('Netlog', 'path', legacy_parser.get('Paths', 'netlog'))
             else:
-                value = "C:\\Program Files (x86)\\Frontier\\EDLaunch\\Products\\FORC-FDEV-D-1010\\Logs"
-                self._config_parser.set('Netlog', 'path', value)
+                self._config_parser.set('Netlog', 'path', self.__find_netlog_path())
 
+            self._config_parser.set('Netlog', 'appconfig_path', self.__find_appconfig_path())
+            
             self._config_parser.set('Image', 'path', '')
             self._config_parser.set('Image', 'format', edpicture.IMAGE_CONVERT_FORMAT.BMP)
             self._config_parser.set('Image', 'convert_space', '')
@@ -117,6 +138,24 @@ class EDConfig(object):
             finally:
                 self._lock.release()
         
+    def __find_netlog_path(self):
+        potential_paths = edutils.get_potential_log_dirs()
+
+        for edpath in potential_paths:
+            if os.path.exists(edpath):
+                return edpath
+
+        return ""
+    
+    def __find_appconfig_path(self):
+        potential_paths = edutils.get_potential_appconfig_dirs()
+
+        for edpath in potential_paths:
+            if os.path.exists(os.path.join(edpath, "AppConfig.xml")):
+                return edpath
+
+        return ""
+    
     def get_config_version(self):
         return self._version
     
@@ -134,6 +173,9 @@ class EDConfig(object):
     
     def get_netlog_path(self):
         return self._config_parser.get('Netlog', 'path')
+    
+    def get_appconfig_path(self):
+        return self._config_parser.get('Netlog', 'appconfig_path')
     
     def get_image_path(self):
         return self._config_parser.get('Image', 'path')
@@ -169,6 +211,10 @@ class EDConfig(object):
         self._config_parser.set('Netlog', 'path', path)
         self.__write_config()
         
+    def set_appconfig_path(self, path):
+        self._config_parser.set('Netlog', 'appconfig_path', path)
+        self.__write_config()
+        
     def set_image_path(self, path):
         self._config_parser.set('Image', 'path', path)
         self.__write_config()
@@ -193,4 +239,6 @@ _config_singleton = EDConfig()
 def get_instance():
     return _config_singleton
 
-        
+if __name__ == "__main__":
+    config = get_instance()
+    print config.get_appconfig_path()
