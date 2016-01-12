@@ -158,7 +158,7 @@ class EDProxyFrame(wx.Frame):
             message = message + "New to this release is:\n"
             message = message + "- Now using AppConfigLocal.xml instead of AppConfig.xml.\n"
             message = message + "- Separated out the net Log directory and AppConfig directories in the configuration and settings.\n"
-            message = message + "- Auto-detect directory paths if none have been set."
+            message = message + "- Auto-detect directory paths if none have been set.\n"
             message = message + "- Do not allow special characters from systems names when saving image files."
             msg = wx.MessageDialog(parent = self,
                                    message = message,
