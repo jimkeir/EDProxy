@@ -88,10 +88,14 @@ class EDPictureMonitor(PatternMatchingEventHandler):
         self._delete_file = delete_file
         
     def set_name_replacement(self, name):
-        if len(name) == 0:
-            self._name_replacement = None
-        else:
+        if name:
+            # Make sure we have a valid filename.
+            name = name.translate(None, '~#%&*{}\:<>?/+|"')
+
+        if name:
             self._name_replacement = name
+        else:
+            self._name_replacement = None
         
     def set_convert_space(self, value):
         if len(value) == 0:
@@ -225,10 +229,13 @@ def __test_on_created(path):
     print "Got path: ", path
     
 if __name__ == "__main__":
+    name = "Sagittarius A*"
+    
+    print name.translate(None, '~#%&*{}\:<>?/+|"')
     user_dir = os.path.expanduser("~") + "/src/pydev/edproxy/testbed"
     if not os.path.exists(user_dir):
         os.makedirs(user_dir)
-
+ 
     logging.basicConfig(format = "%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s", filename = user_dir + "/edproxy.log")
     edmonitor = EDPictureMonitor(os.path.expanduser(sys.argv[1]))
     edmonitor.add_listener(__test_on_created)
@@ -237,7 +244,7 @@ if __name__ == "__main__":
     edmonitor.set_name_replacement("This is TEST")
 #     edmonitor.set_convert_space("_")
     edmonitor.start()
-    
+     
     try:
         while True:
             time.sleep(1)
