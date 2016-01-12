@@ -66,9 +66,8 @@ class EDConfig(object):
                 
                 if len(log_path) > 0:
                     config_path, _ = os.path.split(os.path.normpath(log_path))
-                    config_path = os.path.join(config_path, "AppConfig.xml")
                     
-                    if (os.path.exists(config_path)):
+                    if (os.path.exists(os.path.join(config_path, "AppConfig.xml"))):
                         value = config_path
                 
             self._config_parser.set('Netlog', 'appconfig_path', value)
@@ -255,6 +254,6 @@ _config_singleton = EDConfig()
 def get_instance():
     return _config_singleton
 
-if __name__ == "__main__":
-    config = get_instance()
-    print config.get_appconfig_path()
+# if __name__ == "__main__":
+#     config = get_instance()
+#     print config.find_netlog_path()

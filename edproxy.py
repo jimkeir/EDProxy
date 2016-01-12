@@ -159,6 +159,7 @@ class EDProxyFrame(wx.Frame):
             message = message + "- Now using AppConfigLocal.xml instead of AppConfig.xml.\n"
             message = message + "- Separated out the net Log directory and AppConfig directories in the configuration and settings.\n"
             message = message + "- Auto-detect directory paths if none have been set."
+            message = message + "- Do not allow special characters from systems names when saving image files."
             msg = wx.MessageDialog(parent = self,
                                    message = message,
                                    caption = "Upgrade to Version " + self._version_number,
@@ -223,9 +224,7 @@ class EDProxyFrame(wx.Frame):
             restart_ed = True
 
         if restart_ed:
-            print "we should restart ed"
             while edutils.is_ed_running():
-                print "show message for restart."
                 msg = wx.MessageDialog(parent = self,
                                        message = "Elite: Dangerous is currently running and Verbose logging will not take effect until Elite: Dangerous is restarted. Please shutdown Elite: Dangerous before continuing.",
                                        caption = "Restart of Elite: Dangerous Required",
