@@ -23,7 +23,7 @@ def sendkeys(keys):
                    .replace('_', '-')
                    
         try:
-            keys = """+{HOME}{BS}%s{ENTER}""" % keys
+            keys = """{END}+{HOME}{BS}%s{ENTER}""" % keys
             SendKeys.SendKeys(keys = keys, pause = 0.02, with_spaces = True)
         except Exception, e:
             print e
