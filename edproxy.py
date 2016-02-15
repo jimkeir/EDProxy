@@ -306,6 +306,14 @@ class EDProxyFrame(wx.Frame):
             except ednet.TimeoutException:
                 self.log.debug("Timeout waiting for initialized. Try again.")
 
+        try:
+            self._lock.acquire()
+            self.client_listview.Append([ addr[0], addr[1] ])
+            self._client_list.append(client)
+            client.set_ondisconnect_listener(self.__on_client_disconnect)
+        finally:
+            self._lock.release()
+
         if client.get_start_time() is not None:
             edparser.EDNetlogParser.parse_past_logs(self._edconfig.get_netlog_path(),
                                                     self._netlog_parser.get_netlog_prefix(),
@@ -315,10 +323,7 @@ class EDProxyFrame(wx.Frame):
 
         try:
             self._lock.acquire()
-            self.client_listview.Append([ addr[0], addr[1] ])
-            client.set_ondisconnect_listener(self.__on_client_disconnect)
             client.set_onrecv_listener(self.__on_net_recv)
-            self._client_list.append(client)
         finally:
             self._lock.release()
 
@@ -357,11 +362,11 @@ class EDProxyFrame(wx.Frame):
         try:
             self.log.info("New remote client at [%s] connected", addr)
             self._lock.acquire()
-            for _client in self._client_list:
-                if _client.get_peername()[0] == client.get_peername()[0]:
-                    self.log.debug("remote client in list close: [%s]", _client.get_peername())
-                    _client.close()
-                    self.log.debug("Done with close")
+#             for _client in self._client_list:
+#                 if _client.get_peername()[0] == client.get_peername()[0]:
+#                     self.log.debug("remote client in list close: [%s]", _client.get_peername())
+#                     _client.close()
+#                     self.log.debug("Done with close")
         finally:
             self.log.debug("Good to go with the new client.")
             self._lock.release()
@@ -548,7 +553,14 @@ if __name__ == "__main__":
         os.makedirs(user_dir)
  
     user_dir = os.path.join(user_dir, "edproxy.log")
-    logging.basicConfig(format = "%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s", filename = user_dir)
+#     logging.basicConfig(format = "%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s", filename = user_dir)
   
+    root_log_handler = logging.handlers.RotatingFileHandler(user_dir, maxBytes=(2 * 1024 * 1024), backupCount=5)
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+    root_logger.setFormatter(logging.Formatter("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s"))
+    root_logger.addHandler(root_log_handler)
+        
     edproxy = EDProxyApp(0)
     edproxy.MainLoop()

@@ -1,21 +1,28 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import os, sys
 import socket, select
 import json
 import datetime, time
 import threading
+import logging
 
 import ednet
 
 class ProxyClient(object):
-    def __init__(self):
+    def __init__(self, name = "", start_time = "now"):
+        self.log = logging.getLogger("com.fussyware.edproxy_test");
+        self.log.setLevel(logging.DEBUG)
+
         self._found = False
         self._running = True
 
         self._discovery_service = ednet.EDDiscoveryService("239.45.99.98", 45551)
         self._discovery_service.add_listener(self.__on_new_message)
 
+        self._name = name
+        self._start_time = start_time
+        
         threading.Thread(target = self.__run).start()
 
     def is_running(self):
@@ -34,15 +41,20 @@ class ProxyClient(object):
 
     def __run(self):
         while self._running:
-            self._discovery_service.start()
-            self._discovery_service.send(ednet.EDDiscoveryMessageQuery('edproxy'))
-            while not self._found:
-                print "Waiting on EDProxy..."
-                time.sleep(2)
-                self._discovery_service.send(ednet.EDDiscoveryMessageQuery('edproxy'))
-            self._discovery_service.stop()
+            print "Start search for Edproxy..."
+#             self._discovery_service.start()
+#             self._discovery_service.send(ednet.EDDiscoveryMessageQuery('edproxy'))
+#             while not self._found:
+#                 print "Waiting on EDProxy..."
+#                 time.sleep(2)
+#                 self._discovery_service.send(ednet.EDDiscoveryMessageQuery('edproxy'))
+#             self._discovery_service.stop()
 
-            print "Found EDProxy at: %s:%s" % (self._ipaddr, str(self._port))
+            self._found = True
+            self._ipaddr = "192.168.1.171"
+            self._port = 45550
+            
+            print "[%s] Found EDProxy at: %s:%s" % (self._name, self._ipaddr, str(self._port))
 
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -52,16 +64,17 @@ class ProxyClient(object):
                 json_init = json.dumps({ 'Date': datetime.datetime.now().isoformat(),
                                          'Type': "Init",
                                          # 'StartTime': "2015-05-31T11:45:23",
-                                         # 'StartTime': "all",
-                                         'StartTime': "now",
+                                         'StartTime': self._start_time,
                                          'Register': [ "System" ] })
 
-                print json_init
+                self.log.debug("[%s] %s" % (self._name, json_init))
+                    
                 sock.sendall(json_init)
             except Exception, e:
                 print "Failed connecting to EDProxy: ", e
                 self._found = False
 
+            print "[%s] Finished connection..." % self._name
             value = ""
             while self._running and self._found:
                 try:
@@ -69,9 +82,7 @@ class ProxyClient(object):
 
                     if rr:
                         value += sock.recv(1024)
-                        if not value:
-                            self._found = False
-                        else:
+                        if value:
                             idx = value.find('}')
 
                             while idx is not -1:
@@ -80,10 +91,13 @@ class ProxyClient(object):
                                 idx = value.find('}')
 
                                 jmap = json.loads(data)
-                                print jmap
+                                
+                                self.log.debug("[%s] %s" % (self._name, jmap))
                 except Exception, e:
                     print "Socket received error: ", e
                     self._found = False
+            
+            print "[%s] Finished with this connection of Edproxy." % self._name
 
             try:
                 sock.shutdown(socket.SHUT_RDWR)
@@ -109,6 +123,27 @@ def edproxy_main():
         print "Failed starting up main. ", e
         sys.exit(0)
 
+def edproxy_stress_test():
+    client_list = list()
+    
+    try:
+        for i in xrange(0, 32):
+            client_list.append(ProxyClient(name=str(i), start_time="now"))
+            time.sleep(0.250)
+    
+        for item in client_list:    
+            while item.is_running():
+                time.sleep(2)
+            item.stop()
+    except KeyboardInterrupt:
+        try:
+            sys.exit(0)
+        except SystemExit:
+            os._exit(0)
+    except Exception, e:
+        print "Failed starting up main. ", e
+        sys.exit(0)
+    
 def edproxy_discovery_announce():
     def _on_new_message(message, discovery):
         if message.get_type() == ednet.DISCOVERY_SERVICE_TYPE.QUERY:
@@ -162,8 +197,12 @@ def edproxy_discovery_query():
         sys.exit(0)
 
 try:
+    logging.basicConfig(format = "%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s", filename = "./test/client_test.log")
+
     if sys.argv[1] == "main":
         edproxy_main()
+    elif sys.argv[1] == "stress":
+        edproxy_stress_test()
     elif sys.argv[1] == "announce":
         edproxy_discovery_announce()
     elif sys.argv[1] == "query":

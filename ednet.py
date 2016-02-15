@@ -8,9 +8,9 @@ from Queue import Empty
 from edevent import *
 import logging
 import sys
-from wx.py.dispatcher import disconnect
+# from wx.py.dispatcher import disconnect
 import edconfig
-import ednet
+# import ednet
 import edevent
 
 #class EDServiceBase():
