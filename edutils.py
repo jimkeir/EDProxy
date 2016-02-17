@@ -69,6 +69,9 @@ def get_user_dir():
 def get_edproxy_dir():
     return os.path.join(get_user_dir(), ".edproxy")
 
+def get_database_dir():
+    return os.path.join(get_edproxy_dir(), "databases")
+
 def is_ed_running():
     for p in psutil.process_iter():
         try:

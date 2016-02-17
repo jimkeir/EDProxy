@@ -149,23 +149,7 @@ class EDSMSettings(plugins.ThirdPartyPluginSettings):
         
         grid1.AddGrowableCol(1, proportion = 1)
         
-        sizer1.Add(grid1, 0, wx.EXPAND | wx.ALL)
-        
-#         box1 = wx.BoxSizer(wx.HORIZONTAL)
-#         box2 = wx.BoxSizer(wx.HORIZONTAL)
-#         
-#         box1.Add(wx.StaticText(self._parent, wx.ID_ANY, _("API Key:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
-#         box1.AddSpacer(2)
-#         box1.Add(self._api_text, 1)
-# 
-#         box2.Add(wx.StaticText(self._parent, wx.ID_ANY, _("CMDR Name:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
-#         box2.AddSpacer(2)
-#         box2.Add(self._cmdr_name, 1)
-#         
-#         sizer1.Add(box1, 0, wx.EXPAND)
-#         sizer1.AddSpacer(5)
-#         sizer1.Add(box2, 0, wx.EXPAND)        
-        
+        sizer1.Add(grid1, 0, wx.EXPAND | wx.ALL)        
         sizer.Add(sizer1, 0, wx.EXPAND)
     
     def do_properties(self):
