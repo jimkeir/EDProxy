@@ -15,7 +15,7 @@ import gettext
 
 import os, sys
 import threading
-import logging
+import logging, logging.handlers
 
 import edutils
 import ednet
@@ -30,6 +30,9 @@ from edicon import edicon
 from edsm import EDSM
 from __builtin__ import range
 import edsendkeys
+
+import edsmdb
+import datetime
 
 class EDProxyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
@@ -199,7 +202,7 @@ class EDProxyFrame(wx.Frame):
             else:
                 self.__check_and_restart_ed()
                 paths_are_good = True
-        
+
         if self._edconfig.get_edproxy_startup():
             wx.PostEvent(self.GetEventHandler(), wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.start_button.GetId()))
 
@@ -209,6 +212,20 @@ class EDProxyFrame(wx.Frame):
             self._updater = edupdate.EDMacOSXUpdater(self, self._version_number)#, base_url="file:///Users/wes/src/pydev/edproxy/testbed")
         
         self.Bind(edupdate.EVT_UPGRADE_EVENT, self.__on_upgrade)
+    
+    def __edsm_on_progress(self, msg):
+        self._edsm_progress_dialog.Pulse(newmsg = msg)
+        
+    def __edsm_on_update(self):
+        try:
+            event = edsmdb.StarMapDbUpdatedEvent()
+            
+            self.log.debug("Sending new event: [%s]", event) 
+            self._lock.acquire()
+            for client in self._client_list:
+                client.send(event)
+        finally:
+            self._lock.release()
     
     def __check_and_restart_ed(self):
         appconfig_path = self._edconfig.get_appconfig_path()             
@@ -242,6 +259,8 @@ class EDProxyFrame(wx.Frame):
             self._netlog_parser.stop()
             self.log.debug("Stop image acquisition service")
             self._edpicture.stop()
+            self.log.debug("Stopping EDSM database background updater")
+            edsmdb.get_instance().stop_background_update()
 
             self.log.debug("Stop all proxy clients and 3rd party plugins")
             self.client_listview.DeleteAllItems()
@@ -297,6 +316,7 @@ class EDProxyFrame(wx.Frame):
     
     def __on_exit_menu(self, event):
         self.__stop()
+        edsmdb.get_instance().close()
         self.Destroy()
         
     def __new_client_thread(self, client, addr):
@@ -310,7 +330,9 @@ class EDProxyFrame(wx.Frame):
             self._lock.acquire()
             self.client_listview.Append([ addr[0], addr[1] ])
             self._client_list.append(client)
+            
             client.set_ondisconnect_listener(self.__on_client_disconnect)
+            client.set_onrecv_listener(self.__on_net_recv)
         finally:
             self._lock.release()
 
@@ -321,11 +343,13 @@ class EDProxyFrame(wx.Frame):
                                                     args = (client,),
                                                     start_time = client.get_start_time())
 
-        try:
-            self._lock.acquire()
-            client.set_onrecv_listener(self.__on_net_recv)
-        finally:
-            self._lock.release()
+        event = edsmdb.StarMapDbUpdatedEvent()
+        client.send(event)
+#         try:
+#             self._lock.acquire()
+#             client.set_onrecv_listener(self.__on_net_recv)
+#         finally:
+#             self._lock.release()
 
     def __on_async_parser_event(self, event):
         if event.get_line_type() == netlogline.NETLOG_LINE_TYPE.SYSTEM:
@@ -391,8 +415,22 @@ class EDProxyFrame(wx.Frame):
             self._lock.release()
         
     def __on_net_recv(self, event):
+#         print "we got an event!", str(event)
         if event.get_line_type() == 'SendKeys':
             edsendkeys.sendkeys(event.get_keys())
+        elif event.get_line_type() == 'GetDistances':
+#             print "Get the distances!!!"
+            dist_response = ednet.StarMapDistanceResponseEvent()
+            edsm = edsmdb.get_instance()
+            
+            for dist in event.get_distances():
+                distance = edsm.get_distance(dist['sys1'], dist['sys2'])
+                
+                if distance.distance != 0.0:
+                    dist_response.add(dist['sys1'], dist['sys2'], distance.distance)
+                
+            print "Sending:", str(dist_response)
+            event.get_proxy_client().send(dist_response)
         
     def __on_new_message(self, message):
         if message.get_type() == ednet.DISCOVERY_SERVICE_TYPE.QUERY:
@@ -467,6 +505,18 @@ class EDProxyFrame(wx.Frame):
             msg.Destroy()
         else:
             self.start_button.Disable()
+
+            self._edsm_progress_dialog = wx.ProgressDialog("Synchronizing EDSM Database", "Synchronizing EDSM Database...", parent = self)
+            self._edsm_progress_dialog.SetSize((480, 103))
+            self._edsm_progress_dialog.Center()
+
+            edsm_db = edsmdb.get_instance()
+            edsm_db.update(onprogress=self.__edsm_on_progress)
+             
+            self._edsm_progress_dialog.Destroy()
+            wx.SafeYield()
+
+            edsm_db.start_background_update(onupdate = self.__edsm_on_update)
 
             try:
                 self.__check_and_restart_ed()
@@ -556,10 +606,10 @@ if __name__ == "__main__":
 #     logging.basicConfig(format = "%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s", filename = user_dir)
   
     root_log_handler = logging.handlers.RotatingFileHandler(user_dir, maxBytes=(2 * 1024 * 1024), backupCount=5)
-
+    root_log_handler.setFormatter(logging.Formatter("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s"))
+ 
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
-    root_logger.setFormatter(logging.Formatter("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s"))
     root_logger.addHandler(root_log_handler)
         
     edproxy = EDProxyApp(0)

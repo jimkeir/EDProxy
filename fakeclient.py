@@ -8,6 +8,7 @@ import threading
 import logging
 
 import ednet
+import ijson
 
 class ProxyClient(object):
     def __init__(self, name = "", start_time = "now"):
@@ -31,6 +32,25 @@ class ProxyClient(object):
     def stop(self):
         self._running = False
 
+#     def __get_json(self, sock, prev_data = None):
+#         prev_data += sock.recv(1024)
+#         if prev_data:
+#             idx = prev_data.find('}')
+# 
+#             while idx is not -1:
+#                 data = prev_data[:idx + 1]
+#                 prev_data = prev_data[idx + 1:]
+#                 idx = prev_data.find('}')
+# 
+#                 jmap = json.loads(data)
+#                 
+#                 self.log.debug("[%s] %s" % (self._name, jmap))
+#                 
+#         return prev_data
+    
+    def __get_json(self, sock, prev_data = None):
+        return ijson.items(sock, 'item')
+        
     def __on_new_message(self, message):
         if message.get_type() == ednet.DISCOVERY_SERVICE_TYPE.ANNOUNCE:
             if message.get_name() == "edproxy" and not self._found:
@@ -51,7 +71,8 @@ class ProxyClient(object):
 #             self._discovery_service.stop()
 
             self._found = True
-            self._ipaddr = "192.168.1.171"
+            self._ipaddr = "10.2.11.59"
+#             self._ipaddr = "192.168.1.136"
             self._port = 45550
             
             print "[%s] Found EDProxy at: %s:%s" % (self._name, self._ipaddr, str(self._port))
@@ -68,6 +89,7 @@ class ProxyClient(object):
                                          'Register': [ "System" ] })
 
                 self.log.debug("[%s] %s" % (self._name, json_init))
+                print ("[%s] %s" % (self._name, json_init))
                     
                 sock.sendall(json_init)
             except Exception, e:
@@ -81,18 +103,9 @@ class ProxyClient(object):
                     rr, _, _ = select.select([sock], [], [], 2)
 
                     if rr:
-                        value += sock.recv(1024)
-                        if value:
-                            idx = value.find('}')
-
-                            while idx is not -1:
-                                data = value[:idx + 1]
-                                value = value[idx + 1:]
-                                idx = value.find('}')
-
-                                jmap = json.loads(data)
-                                
-                                self.log.debug("[%s] %s" % (self._name, jmap))
+#                         value = self.__get_json(sock, value)
+                        for item in self.__get_json(sock.makefile()):
+                            print item
                 except Exception, e:
                     print "Socket received error: ", e
                     self._found = False
@@ -109,7 +122,7 @@ class ProxyClient(object):
 
 def edproxy_main():
     try:
-        ed = ProxyClient()
+        ed = ProxyClient(start_time="all")
         
         while ed.is_running():
             time.sleep(2)
@@ -127,8 +140,8 @@ def edproxy_stress_test():
     client_list = list()
     
     try:
-        for i in xrange(0, 32):
-            client_list.append(ProxyClient(name=str(i), start_time="now"))
+        for i in xrange(0, 1):
+            client_list.append(ProxyClient(name=str(i), start_time="all"))
             time.sleep(0.250)
     
         for item in client_list:    

@@ -1,16 +1,23 @@
-import threading
 import time, datetime
 import logging
 import urllib, urllib2
 import os
 import sqlite3
-import json
 
 import edutils
 import ijson
-from datetime import tzinfo
-from Finder.Finder_items import item
+# from Finder.Finder_items import item
+import threading
+from __builtin__ import False
+import edevent
 
+class StarMapDbUpdatedEvent(edevent.BaseEvent):
+    def __init__(self):
+        edevent.BaseEvent.__init__(self, "StarMapUpdated", datetime.datetime.now())
+    
+    def _fill_json_dict(self, json_dict):
+        pass
+    
 class DbInfo(object):
     TABLE_NAME = 'DbInfo'
     ID = "_id"
@@ -84,18 +91,22 @@ class EDSMDb(object):
         self._first_time_install = False
         self._dbconn = None
         
+        self._update_event = threading.Event()
+        self._background_update_running = False
+        
         if (not os.path.exists(edproxy_db_dir)):
             os.makedirs(edproxy_db_dir)
             
         if (not os.path.exists(edproxy_db_filename)):
             self.__do_create_db(edproxy_db_filename)
         else:
-            self._dbconn = sqlite3.connect(edproxy_db_filename)
+            self._dbconn = sqlite3.connect(edproxy_db_filename, check_same_thread=False)
 
     def close(self):
+        self.stop_background_update()
         self._dbconn.close()
         
-    def update(self):
+    def update(self, onprogress = None):
         updated = False
         
         if self._first_time_install:
@@ -103,17 +114,28 @@ class EDSMDb(object):
             # from when the database was first created.
             last_check = self.__get_utc(days = -1)
             
-            self.__pull_systems()
-            self.__pull_distances()
+            self.__pull_systems(onprogress)
+            self.__pull_distances(onprogress)
             self.__setup_info(last_check)
                     
             self._first_time_install = False
             updated = True
         else:
-            self.__update_edsm()
+            self.__update_edsm(onprogress)
         
         return updated
     
+    def start_background_update(self, onupdate = None):
+        self._background_update_running = True
+        
+        _thread = threading.Thread(target = self.__background_updater, args = (onupdate,))
+        _thread.daemon = True
+        _thread.start()
+
+    def stop_background_update(self):
+        self._background_update_running = False
+        self._update_event.set()
+        
     def get_system(self, name):
         cursor = None
         try:
@@ -129,13 +151,14 @@ class EDSMDb(object):
             else:
                 return None
         except sqlite3.Error, e:
-            print "EDSM get system: SQLite error %s:" % e.args[0]
+            self._log.error("EDSM get system: SQLite error %s:" % e.args[0])
         finally:
             if cursor:
                 cursor.close()
 
     def get_distances(self, system):
         lower_system = system.lower()
+        sys1 = self.get_system(system)
         cursor = None
         
         try:
@@ -147,25 +170,27 @@ class EDSMDb(object):
             row = cursor.fetchone()
             
             while row:
-                _id = row[0]
-                
-                if lower_system == row[1].lower(): 
-                    sys1 = row[1]
-                    sys2 = row[2]
-                else:
-                    sys1 = row[2]
-                    sys2 = row[1]
+                if row[1] and row[2]:
+                    _id = row[0]
                     
-                
-                dist = EDSMDistance(_id, sys1, sys2, row[3], self.__get_datetime(timestamp = row[4]))
-                if not dist in dist_list:
-                    dist_list.add(dist)
+                    if lower_system == row[1].lower(): 
+                        sys2 = self.get_system(row[2])
+                    else:
+                        sys2 = self.get_system(row[1])
+                        
+                    if sys2:
+                        dist = EDSMDistance(_id, sys1, sys2, row[3], self.__get_datetime(timestamp = row[4]))
+                        if not dist in dist_list:
+                            dist_list.add(dist)
+                            
+                            if len(dist_list) == 25:
+                                break
                     
                 row = cursor.fetchone()
                             
             return dist_list
         except sqlite3.Error, e:
-            print "EDSM get system: SQLite error %s:" % e.args[0]
+            self._log.error("EDSM get system: SQLite error %s:" % e.args[0])
         finally:
             if cursor:
                 cursor.close()
@@ -184,7 +209,7 @@ class EDSMDb(object):
             else:
                 return None
         except sqlite3.Error, e:
-            print "EDSM get system: SQLite error %s:" % e.args[0]
+            self._log.error("EDSM get system: SQLite error %s:" % e.args[0])
         finally:
             if cursor:
                 cursor.close()
@@ -197,14 +222,14 @@ class EDSMDb(object):
             dt = dt + datetime.timedelta(days = days)
         elif days < 0:
             dt = dt - datetime.timedelta(days = -days)
-                            
-        return int(time.mktime(dt.timetuple()) * 1000 + dt.microsecond / 1000)
+        
+        return int((dt - datetime.datetime(1970, 1, 1)).total_seconds() * 1000.0)
     
     def __get_datetime(self, timestamp = None, timestring = None):
         if timestring != None:
             return datetime.datetime.strptime(timestring, "%Y-%m-%d %H:%M:%S")
         elif timestamp != None:
-            return datetime.datetime.utcfromtimestamp(timestamp / 1000)
+            return datetime.datetime.utcfromtimestamp(float(timestamp) / 1000.0)
         else:
             return datetime.datetime.utcnow()
 
@@ -215,8 +240,17 @@ class EDSMDb(object):
         
         self._dbconn.commit()
         
-    def __update_edsm(self):
+    def __background_updater(self, onupdate):
+        while self._background_update_running:
+            if not self._update_event.wait(timeout = (5 * 60)):
+                if self._background_update_running and self.__update_edsm() and onupdate:
+                    onupdate()
+                
+            self._update_event.clear()
+        
+    def __update_edsm(self, onprogress = None):
         cursor = None
+        updated = False
         
         try:
             cursor = self._dbconn.cursor()
@@ -226,9 +260,6 @@ class EDSMDb(object):
             
             now = datetime.datetime.utcnow()
             start_time = self.__get_datetime(int(cursor.fetchone()[0]))
-
-            #test
-#             start_time = start_time - datetime.timedelta(days=32)
             end_time = start_time + datetime.timedelta(days = 14)
             end_time = min(end_time, now)
             
@@ -245,8 +276,12 @@ class EDSMDb(object):
                 request.add_header("Accept-Encoding", "")
                 request.add_header("Content-Type", "application/json")
                 request.add_header("charset", "utf-8")
-                
-                print "Update Systems..."
+
+                self._log.debug(url)
+                if onprogress:
+                    onprogress("Updating EDSM Database - Downloading Systems...")
+
+                self._log.debug("Update Systems...")
                 handle = urllib2.urlopen(request)
                 if handle:
                     query_sql = "SELECT * FROM %s WHERE %s=? LIMIT 1" % (EDSMSystems.TABLE_NAME, EDSMSystems.ID)
@@ -256,6 +291,9 @@ class EDSMDb(object):
                     count = 0
                     for item in ijson.items(handle, 'item'):
                         count = count + 1
+                        if (count % 100) == 0:
+                            if onprogress:
+                                onprogress("Updating EDSM Database - Processed [%d] Systems..." % count)
                         
                         _id = int(item["id"])
                         name = item['name']
@@ -278,15 +316,14 @@ class EDSMDb(object):
                             zr = row[4]
                             
                             if x != xr or y != yr or z != zr:
-                                print "Update system %s (%f, %f, %f) -> (%f, %f, %f)" % (name, x, y, z, xr, yr, zr)
                                 cursor.execute(update_sql, (x, y, z, _id))
-
+                                updated = True
                         else:
-                            print "Insert system %s" % (name)
                             cursor.execute(insert_sql, (_id, name, x, y, z))
+                            updated = True
                         
                     self._dbconn.commit()
-                    print "Updated [%d] systems" % (count)
+                    self._log.debug("Updated [%d] systems" % (count))
                     
                 query_params= dict()
                 query_params["startdatetime"] = start_time.strftime("%Y-%m-%d %H:%M:%S +00:00") 
@@ -299,7 +336,10 @@ class EDSMDb(object):
                 request.add_header("Content-Type", "application/json")
                 request.add_header("charset", "utf-8")
 
-                print "Update distances..."
+                if onprogress:
+                    onprogress("Updating EDSM Database - Downloading Distances...")
+
+                self._log.debug("Update distances...")
                 handle = urllib2.urlopen(request)
                 if handle:
                     query_sql = "SELECT * FROM %s WHERE %s IN (?,?) AND %s IN (?,?) LIMIT 1" % (EDSMDistances.TABLE_NAME, EDSMDistances.COLUMN_NAME_FROM, EDSMDistances.COLUMN_NAME_TO)
@@ -309,6 +349,9 @@ class EDSMDb(object):
                     count = 0
                     for item in ijson.items(handle, 'item'):
                         count = count + 1
+                        if (count % 100) == 0:
+                            if onprogress:
+                                onprogress("Updating EDSM Database - Processed [%d] Distances..." % count)
                         
                         _from = item['sys1']['name']
                         _to = item['sys2']['name']
@@ -321,14 +364,14 @@ class EDSMDb(object):
                         row = cursor.fetchone()
                         if row:
                             if _dist != row[3] and _date >= row[4]:
-                                print "update row %s->%s : %f->%f" % (_from, _to, float(row[3]), _dist)
                                 cursor.execute(update_sql, (_dist, _date, _from, _to, _from, _to))
+                                updated = True
                         else:
-                            print "insert row %s->%s : %f" % (_from, _to, _dist)
                             cursor.execute(insert_sql, (_from, _to, _dist, _date))
+                            updated = True
                         
                     self._dbconn.commit()
-                    print "Updated [%d] distances" % (count)
+                    self._log.debug("Updated [%d] distances" % (count))
 
                 start_time = end_time
                 end_time = start_time + datetime.timedelta(days = 14)
@@ -336,10 +379,12 @@ class EDSMDb(object):
                 
                 self.__update_last_check(cursor, self.__get_utc(dt = start_time))
         except sqlite3.Error, e:
-            print "EDSM Update: SQLite error %s:" % e.args[0]
+            self._log.error("EDSM Update: SQLite error %s:" % e.args[0])
         finally:
             if cursor:
                 cursor.close()
+                
+        return updated
             
     def __do_create_db(self, filename):
         self._first_time_install = True
@@ -347,10 +392,10 @@ class EDSMDb(object):
         cursor = None
         
         try:
-            self._dbconn = sqlite3.connect(filename)
+            self._dbconn = sqlite3.connect(filename, check_same_thread=False)
             cursor = self._dbconn.cursor()
 
-            print "Create EDSM Db"
+            self._log.debug("Create EDSM Db")
             cursor.execute("DROP INDEX IF EXISTS EDSMSystemIndex")
             cursor.execute("DROP INDEX IF EXISTS EDSMDistIndex")
             cursor.execute("DROP TABLE IF EXISTS %s" % EDSMSystems.TABLE_NAME)
@@ -371,18 +416,26 @@ class EDSMDb(object):
             if cursor:
                 cursor.close()
             
-    def __pull_systems(self):
+    def __pull_systems(self, onprogress = None):
         cursor = None
         
         try:
-            print "Pull EDSM Systems"
+            if onprogress:
+                onprogress("Create EDSM Database - Downloading Systems Nightly...")
+                
             cursor = self._dbconn.cursor()
             handle = urllib2.urlopen("http://www.edsm.net/dump/systemsWithCoordinates.json", timeout = 60)
     
             if handle:
                 sql = "INSERT INTO %s VALUES (?, ?, ?, ?, ?)" % (EDSMSystems.TABLE_NAME)
 
+                count = 0
                 for system in ijson.items(handle, 'item'):
+                    count = count + 1
+                    if (count % 100) == 0:
+                        if onprogress:
+                            onprogress("Create EDSM Database - Processed [%d] Systems..." % count)
+                        
                     _id = int(system["id"])
                     name = system['name']
                     
@@ -404,25 +457,33 @@ class EDSMDb(object):
     
                 return self.__get_utc(days = -1)
         except sqlite3.Error, e:
-            print "Systems: SQLite error %s:" % e.args[0]
+            self._log.error("Systems: SQLite error %s:" % e.args[0])
         finally:
             if cursor:
                 cursor.close()
             
         return 0
     
-    def __pull_distances(self):
+    def __pull_distances(self, onprogress = None):
         cursor = None
         
         try:
-            print "Pull EDSM Distances"
+            if onprogress:
+                onprogress("Create EDSM Database - Downloading Distances Nightly...")
+                
             cursor = self._dbconn.cursor()
              
             handle = urllib2.urlopen("http://www.edsm.net/dump/distances.json", timeout = 60)
             if handle:
                 sql = "INSERT INTO %s (%s, %s, %s, %s) VALUES (?, ?, ?, ?)" % (EDSMDistances.TABLE_NAME, EDSMDistances.COLUMN_NAME_FROM, EDSMDistances.COLUMN_NAME_TO, EDSMDistances.COLUMN_NAME_DISTANCE, EDSMDistances.COLUMN_NAME_DATE)
 
+                count = 0
                 for distance in ijson.items(handle, 'item'):
+                    count = count + 1
+                    if (count % 100) == 0:
+                        if onprogress:
+                            onprogress("Create EDSM Database - Processed [%d] Distances..." % count)
+
                     _from = distance['sys1']['name']
                     _to = distance['sys2']['name']
                     _dist = float(distance['distance'])
@@ -436,7 +497,7 @@ class EDSMDb(object):
                  
                 return self.__get_utc(days = -1)
         except sqlite3.Error, e:
-            print "Distances: SQLite error %s:" % e.args[0]
+            self._log.error("Distances: SQLite error %s:" % e.args[0])
         finally:
             if cursor:
                 cursor.close()
@@ -447,7 +508,6 @@ class EDSMDb(object):
         cursor = None
         
         try:
-            print "Setup EDSM Info tables"
             sql = "INSERT INTO %s (%s, %s) VALUES (?, ?);" % (DbInfo.TABLE_NAME, DbInfo.COLUMN_NAME_CONFIG, DbInfo.COLUMN_NAME_VALUE)
     
             cursor = self._dbconn.cursor()
@@ -470,14 +530,18 @@ class EDSMDb(object):
 
             self._dbconn.commit()
         except sqlite3.Error, e:
-            print "Setup: SQLite error %s:" % e.args[0]
+            self._log.error("Setup: SQLite error %s:" % e.args[0])
         finally:
             if cursor:
                 cursor.close()
 
+_edsm_db = EDSMDb()
+def get_instance():
+    return _edsm_db
+
 def _test_update_db():
     _t0 = datetime.datetime.utcnow()
-    edsm_db = EDSMDb()
+    edsm_db = get_instance()
     edsm_db.update()
  
     print "Update time:", (datetime.datetime.utcnow() - _t0)
@@ -501,6 +565,13 @@ def _test_get_distance():
     edsm_db.close()
     
 if __name__ == "__main__":
-#     _test_update_db()
+    user_dir = os.path.join(edutils.get_user_dir(), ".edproxy")
+    if not os.path.exists(user_dir):
+        os.makedirs(user_dir)
+ 
+    user_dir = os.path.join(user_dir, "edproxy.log")
+    logging.basicConfig(format = "%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s", filename = user_dir)
+
+    _test_update_db()
 #     _test_get_distances()
-    _test_get_distance()
+#     _test_get_distance()

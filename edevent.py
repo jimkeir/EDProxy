@@ -38,7 +38,8 @@ class BaseEvent(object):
         raise ValueError("This is an interface and not intended for public use.")
         
     def __str__(self):
-        return "Type [" + str(self._type) + "], Time [" + self._time.isoformat() + "]"
+        return self.get_json()
+#         return "Type [" + str(self._type) + "], Time [" + self._time.isoformat() + "]"
 
 class _EDThreadWorker(threading.Thread):
     def __init__(self, task_queue):
