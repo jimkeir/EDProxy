@@ -415,21 +415,21 @@ class EDProxyFrame(wx.Frame):
             self._lock.release()
         
     def __on_net_recv(self, event):
-#         print "we got an event!", str(event)
+#         self.log.debug("New net event: [%s]", str(event))
         if event.get_line_type() == 'SendKeys':
             edsendkeys.sendkeys(event.get_keys())
         elif event.get_line_type() == 'GetDistances':
-#             print "Get the distances!!!"
+#             self.log.debug("New distance event: [%s]", str(event))
             dist_response = ednet.StarMapDistanceResponseEvent()
             edsm = edsmdb.get_instance()
             
             for dist in event.get_distances():
                 distance = edsm.get_distance(dist['sys1'], dist['sys2'])
                 
-                if distance.distance != 0.0:
+                if distance and distance.distance != 0.0:
                     dist_response.add(dist['sys1'], dist['sys2'], distance.distance)
                 
-            print "Sending:", str(dist_response)
+            self.log.debug("Get Dist Response:", str(dist_response))
             event.get_proxy_client().send(dist_response)
         
     def __on_new_message(self, message):

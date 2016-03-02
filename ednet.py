@@ -412,7 +412,7 @@ class EDProxyClient():
             
             if _type in self._register_list:
                 try:
-#                     self.log.debug(event.get_json())
+                    self.log.debug(event.get_json())
                     self._wrapper.write(event.get_json())
                 except socket.error as msg:
                     self.log.exception(msg)
@@ -472,8 +472,9 @@ class EDProxyClient():
     def __heartbeat_run(self):
         while self.is_running():
             if self._heartbeat_event.wait(self._heartbeat):
+                if self.is_running():
 #                 self.log.debug("Recieved a heartbeat message return pong.")
-                self.send(PongEvent())
+                    self.send(PongEvent())
             else:
                 self.log.error("Two heartbeats were missed! Closing down the socket.")
                 self.close()
@@ -493,6 +494,7 @@ class EDProxyClient():
                     else:
                         event = RecvNetEventFactory.get_recv_event(json_map, self)
                         if event:
+                            self.log.debug("Received [%s]" % str(event))
                             self._recv_event_queue.post(event)
             except Exception, e:
                 self.log.exception(e)
