@@ -404,12 +404,19 @@ class EDProxyFrame(wx.Frame):
             peername = client.get_peername()
             self.log.info("Disconnecting [%s]", peername)
             
+            self.log.debug("1")
             self._lock.acquire()
+            self.log.debug("2")
             self._client_list.remove(client)
+            self.log.debug("3")
             
             index = self.client_listview.FindItem(0, peername[0])
+            self.log.debug("4")
             if index != -1:
+                self.log.debug("5 [%d]" % index)
                 self.client_listview.DeleteItem(index)
+                wx.SafeYield()
+            self.log.debug("6")
         finally:
             self.log.debug("Disconnect done.")
             self._lock.release()
@@ -429,7 +436,7 @@ class EDProxyFrame(wx.Frame):
                 if distance and distance.distance != 0.0:
                     dist_response.add(dist['sys1'], dist['sys2'], distance.distance)
                 
-            self.log.debug("Get Dist Response:", str(dist_response))
+            self.log.debug("Get Dist Response: [%s]" % str(dist_response))
             event.get_proxy_client().send(dist_response)
         
     def __on_new_message(self, message):

@@ -402,6 +402,7 @@ class EDProxyClient():
             try:
                 self._lock.acquire()
                 self._running = False
+                self._heartbeat_event.set()
                 self._wrapper.close()
             finally:
                 self._lock.release()

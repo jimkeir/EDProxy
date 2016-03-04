@@ -46,6 +46,8 @@ def Lexer(f, buf_size=BUFSIZE):
                     except ValueError:
                         data = f.read(buf_size)
                         if not data:
+                            print buf, pos, end
+                            print buf[pos:end + 1]
                             raise common.IncompleteJSONError('Incomplete string lexeme')
                         buf += data
                 yield discarded + pos, buf[pos:end + 1]

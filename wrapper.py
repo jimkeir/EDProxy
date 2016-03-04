@@ -1,8 +1,11 @@
 import socket, select
 import threading
+import logging
 
 class SocketWrapper(object):
     def __init__(self, sock):
+        self._log = logging.getLogger("com.fussyware.edproxy")
+
         self._sock = sock
         self._sock.settimeout(60)
         
@@ -32,16 +35,18 @@ class SocketWrapper(object):
             self._lock.release()
             
     def read(self, bytes_read = 4096):
-        if self._closed or bytes == 0:
+        if self._closed or bytes_read == 0:
+            self._log.debug("closed [%s], bytes [%d]" % (str(self._closed), bytes_read))
             return ""
         
         try:
             rr = []
             while not rr and not self._closed:
                 if self._frame:
-                    rr, _, _ = select.select([self._sock], [], [], 0)
+                    rr, _, _ = select.select([self._sock], [], [], 0.250)
                     if not rr:
                         self._frame = False
+                        self._log.debug("Framing is done so send blank")
                         return ""
                 else:
                     rr, _, _ = select.select([self._sock], [], [], 2)
@@ -49,6 +54,7 @@ class SocketWrapper(object):
             self.close()
             
         if self._closed:
+            self._log.debug("Socket has been closed")
             return ""
 
         try:
@@ -60,6 +66,8 @@ class SocketWrapper(object):
             return buf 
         except socket.error as msg:
             self.close()
+            self._log.debug("Socket error")
             return ""
         except socket.timeout as msg:
+            self._log.debug("Socket timeout")
             return ""
