@@ -1,4 +1,3 @@
-import json
 import edevent
 import edsmdb
 import datetime
@@ -61,44 +60,35 @@ class _SystemLine(edevent.BaseEvent):
 
     @classmethod
     def parse_netlog_line(cls, line_time, line):
-        if (line.startswith("System:")):
-            try:
-                b, _, line = line.partition("(")
-                b, _, line = line.partition("Body:")
-                system = b[:len(b) - 2]
-            except ValueError:
-                return None
-
-            try:
-                b, _, line = line.partition("Pos:(")
-                body = int(b)
-            except ValueError:
-                body = 0
-
-            try:
-                b, _, line = line.partition(")")
-                pos = tuple(float(f) for f in b.split(","))
-            except ValueError:
-                pos = (0.0, 0.0, 0.0)
+        if 'SystemName' in line:
+            system = line['SystemName']
             
-            try:
-                status = line.strip()
-
-                if status == str(NETLOG_SHIP_STATUS.NORMAL_FLIGHT):
+            if 'Body' in line:
+                body = int(line['Body'])
+            else:
+                body = 0
+                
+            if 'Pos' in line:
+                pos = tuple(float(f) for f in line['Pos'].split(","))
+            else:
+                pos = (0.0, 0.0, 0.0)
+                
+            if 'TravelMode' in line:
+                status = line['TravelMode']
+                
+                if status.startswith(str(NETLOG_SHIP_STATUS.NORMAL_FLIGHT)):
                     status = NETLOG_SHIP_STATUS.NORMAL_FLIGHT
-                elif status == str(NETLOG_SHIP_STATUS.SUPERCRUISE):
+                elif status.startswith(str(NETLOG_SHIP_STATUS.SUPERCRUISE)):
                     status = NETLOG_SHIP_STATUS.SUPERCRUISE
-                elif status == str(NETLOG_SHIP_STATUS.PROVING_GROUND):
+                elif status.startswith(str(NETLOG_SHIP_STATUS.PROVING_GROUND)):
                     status = NETLOG_SHIP_STATUS.PROVING_GROUND
                 else:
                     status = NETLOG_SHIP_STATUS.UNKNOWN
-            except ValueError:
-                status = NETLOG_SHIP_STATUS.UNKNOWN
-
+                    
             return cls(line_time, system, num_bodies = body, position = pos, ship_status = status)
-
-        return None
-
+        else:
+            return None
+            
     def _fill_json_dict(self, json_dict):
         json_dict['System'] = self._name
         json_dict['Bodies'] = self._num_bodies
