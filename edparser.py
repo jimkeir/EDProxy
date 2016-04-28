@@ -127,7 +127,7 @@ class EDNetlogParser():
                             
                             line_time = _parse_date(line_groups['Time'])
 
-                            if line and line_time:
+                            if line_time:
                                 if (prev_time is not None) and (line_time < prev_time):
                                     file_date += datetime.timedelta(days = 1)
     
@@ -135,7 +135,7 @@ class EDNetlogParser():
                                 line_time = datetime.datetime.combine(file_date, line_time)
     
                                 if line_time >= start_time:
-                                    parsed_line = NetlogLineFactory.get_line(line_time, line)
+                                    parsed_line = NetlogLineFactory.get_line(line_time, line_groups)
                                     if parsed_line is not None:
                                         eq.post(parsed_line)
 
