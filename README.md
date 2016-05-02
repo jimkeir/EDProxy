@@ -198,7 +198,7 @@ Example:
 }
 ```
 
-### Send Keys Event ###
+### Send Keys Event (Windows Only) ###
 ```
 {
     "Type": "SendKeys"
@@ -214,6 +214,62 @@ Example:
     "Type": "SendKeys"
     "DateUtc": "2015-06-29T19:25:21"
     "Keys": "Sol"
+}
+```
+
+### Star Map Updated Event ###
+```
+{
+    "Type": "StarMapUpdated"
+    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
+    "DateUtc": "yyyy-mm-ddTHH:MM:SS"
+}
+```
+
+Example:
+``` json
+{
+    "Type": "StarMapUpdated"
+    "DateUtc": "2015-06-29T19:25:21"
+}
+```
+
+### Get Distances Event ###
+```
+{
+    "Type": "GetDistances"
+    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
+    "DateUtc": "yyyy-mm-ddTHH:MM:SS"
+    "Distances": [ { "sys1": "System Name", "sys2": "System Name" } ]
+}
+```
+
+Example:
+``` json
+{
+    "Type": "GetDistances"
+    "DateUtc": "2015-06-29T19:25:21"
+    "Distances": [ { "sys1": "Sol", "sys2: "Kured" }, { "sys1": "Kured", "sys2": "Marowalan" } ]
+}
+```
+
+
+### Get Distances Result Event ###
+```
+{
+    "Type": "GetDistancesResult"
+    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
+    "DateUtc": "yyyy-mm-ddTHH:MM:SS"
+    "Distances": [ { "sys1": "System Name", "sys2": "System Name", "dist": 123.45 } ]
+}
+```
+
+Example:
+``` json
+{
+    "Type": "GetDistancesResult"
+    "DateUtc": "2015-06-29T19:25:21"
+    "Distances": [ { "sys1": "Sol", "sys2: "Kured", "dist": 123.45 }, { "sys1": "Kured", "sys2": "Marowalan", "dist": 8.12 } ]
 }
 ```
 
