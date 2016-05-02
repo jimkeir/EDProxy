@@ -198,38 +198,22 @@ Example:
 }
 ```
 
-### Import Event ###
+### Send Keys Event ###
 ```
 {
-    "Type": "Import"
+    "Type": "SendKeys"
     "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
     "DateUtc": "yyyy-mm-ddTHH:MM:SS"
-    "System": "System name"
-    "Position": [x, y, z] Coordinates for the System
-    "MainStar": "Stellar Type"
-    "StellarBodies": Number of Stellar Bodies known in System
-    "StellarTypes": [ "Array of Stellar Types" ]
-    "PlanetaryBodies": Number of Planetary Bodies known in System
-    "PlanetTypes": [ "Array of Planet Types" ]
-    "Notes": "Notes for the system"
-    "RefDistances": [ { "System": "System name", "Distance": 123.45 } ]
+    "Keys": "Keys to Event"
 }
 ```
 
 Example:
 ``` json
 {
-    "Type": "Import"
+    "Type": "SendKeys"
     "DateUtc": "2015-06-29T19:25:21"
-    "System": "Sol"
-    "Position": [ 0.00, 0.00, 0.00 ]
-    "MainStar": "Put in value"
-    "StellarBodies": 1
-    "StellarTypes": [ "Put in value" ]
-    "PlanetaryBodies": 6
-    "PlanetTypes": [ "Earth-Like" ]
-    "Notes": "This is home!"
-    "RefDistances": [ { "System": "Put in value", "Distance": 123.45 } ]
+    "Keys": "Sol"
 }
 ```
 
