@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Edproxy"
-#define MyAppVersion "2.2.0"
+#define MyAppVersion "2.2.2"
 #define MyAppPublisher "Fussyware"
 #define MyAppURL "https://bitbucket.org/westokyo/edproxy/overview"
 #define MyAppExeName "edproxy.exe"

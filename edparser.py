@@ -58,7 +58,8 @@ class EDNetlogParser():
         self._prefix = logfile_prefix
         self._event_queue = EDEventQueue()
         
-        self.regex = re.compile('\{(?P<Time>\d+:\d+:\d+)\} System:(?P<SysTag>\d+)\((?P<SystemName>.+)\) Body:(?P<Body>\d+) Pos:\((?P<Pos>.+)\) (?P<TravelMode>\w+)')
+        self.regex_pre21 = re.compile('\{(?P<Time>\d+:\d+:\d+)\} System:(?P<SysTag>\d+)\((?P<SystemName>.+)\) Body:(?P<Body>\d+) Pos:\((?P<Pos>.+)\) (?P<TravelMode>\w+)')
+        self.regex_post21 = re.compile('\{(?P<Time>\d+:\d+:\d+)\} System:\"(?P<SystemName>.+)\" StarPos:\((?P<StarPos>.+)\)ly Body:(?P<Body>\d+) RelPos:\((?P<Pos>.+)\)km (?P<TravelMode>\w+)')
 
     def add_listener(self, callback, *args, **kwargs):
         self._event_queue.add_listener(callback, *args, **kwargs)
@@ -96,6 +97,28 @@ class EDNetlogParser():
             self._lock.release()
 
     @staticmethod
+    def _handle_regex_match(match, file_date, prev_time, start_time = None):
+        line_groups = match.groupdict()
+        
+        line_time = _parse_date(line_groups['Time'])
+        parsed_line = None
+
+        if line_time:
+            if prev_time and (line_time < prev_time):
+                file_date += datetime.timedelta(days = 1)
+
+            prev_time = line_time
+            line_time = datetime.datetime.combine(file_date, line_time)
+           
+            if start_time:
+                if (line_time >= start_time):
+                    parsed_line = NetlogLineFactory.get_line(line_time, line_groups)
+            else:
+                parsed_line = NetlogLineFactory.get_line(line_time, line_groups)
+            
+        return file_date, prev_time, parsed_line
+    
+    @staticmethod
     def parse_past_logs(netlog_path, netlog_prefix, callback, args = (), kwargs = {}, start_time = None):
         if args is None:
             args = ()
@@ -105,7 +128,9 @@ class EDNetlogParser():
         eq = EDEventQueue()
         eq.add_listener(callback, *args, **kwargs)
 
-        regex = re.compile('\{(?P<Time>\d+:\d+:\d+)\} System:(?P<SysTag>\d+)\((?P<SystemName>.+)\) Body:(?P<Body>\d+) Pos:\((?P<Pos>.+)\) (?P<TravelMode>\w+)')
+        regex_pre21 = re.compile('\{(?P<Time>\d+:\d+:\d+)\} System:(?P<SysTag>\d+)\((?P<SystemName>.+)\) Body:(?P<Body>\d+) Pos:\((?P<Pos>.+)\) (?P<TravelMode>\w+)')
+        regex_post21 = re.compile('\{(?P<Time>\d+:\d+:\d+)\} System:\"(?P<SystemName>.+)\" StarPos:\((?P<StarPos>.+)\)ly Body:(?P<Body>\d+) RelPos:\((?P<Pos>.+)\)km (?P<TravelMode>\w+)')
+
         loglist = _get_log_files(netlog_path, netlog_prefix)
 
         if loglist:
@@ -121,23 +146,19 @@ class EDNetlogParser():
 
                     prev_time = None
                     for line in iter(logfile):
-                        match = regex.search(line)
+                        match = regex_post21.search(line)
                         if match:
-                            line_groups = match.groupdict()
+                            file_date, prev_time, parsed_line = EDNetlogParser._handle_regex_match(match, file_date, prev_time, start_time)
                             
-                            line_time = _parse_date(line_groups['Time'])
-
-                            if line_time:
-                                if (prev_time is not None) and (line_time < prev_time):
-                                    file_date += datetime.timedelta(days = 1)
-    
-                                prev_time = line_time
-                                line_time = datetime.datetime.combine(file_date, line_time)
-    
-                                if line_time >= start_time:
-                                    parsed_line = NetlogLineFactory.get_line(line_time, line_groups)
-                                    if parsed_line is not None:
-                                        eq.post(parsed_line)
+                            if parsed_line:
+                                eq.post(parsed_line)
+                        else:
+                            match = regex_pre21.search(line)
+                            if match:
+                                file_date, prev_time, parsed_line = EDNetlogParser._handle_regex_match(match, file_date, prev_time, start_time)
+                                
+                                if parsed_line:
+                                    eq.post(parsed_line)
 
                     logfile.close()
                 
@@ -177,20 +198,18 @@ class EDNetlogParser():
                 else:
                     wait_time = 0.1
 
-                    match = self.regex.search(line)
+                    match = self.regex_post21.search(line)
                     if match:
-                        line_groups = match.groupdict()
+                        file_date, prev_time, parsed_line = EDNetlogParser._handle_regex_match(match, file_date, prev_time)
                         
-                        line_time = _parse_date(line_groups['Time'])
-                        if line_time:
-                            if (prev_time is not None) and (line_time < prev_time):
-                                file_date += datetime.timedelta(days = 1)
-    
-                            prev_time = line_time
-                            line_time = datetime.datetime.combine(file_date, line_time)
-    
-                            parsed_line = NetlogLineFactory.get_line(line_time, line_groups)
-                            if parsed_line is not None:
+                        if parsed_line:
+                            self._event_queue.post(parsed_line)
+                    else:
+                        match = self.regex_pre21.search(line)
+                        if match:
+                            file_date, prev_time, parsed_line = EDNetlogParser._handle_regex_match(match, file_date, prev_time)
+                            
+                            if parsed_line:
                                 self._event_queue.post(parsed_line)
 
             logfile.close()

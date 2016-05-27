@@ -2,7 +2,7 @@ import edevent
 import edsmdb
 import datetime
 
-__all__ = [ 'NETLOG_LINE_TYPE', 'NETLOG_SHIP_STATUS', 'NetlogLineFactory' ]
+__all__ = [ 'NETLOG_LINE_TYPE', 'NETLOG_SHIP_STATUS', 'NETLOG_VERSION', 'NetlogLineFactory' ]
 
 def _enum(**enums):
     return type('Enum', (), enums)
@@ -15,53 +15,59 @@ NETLOG_SHIP_STATUS = _enum(UNKNOWN = "unknown",
                            SUPERCRUISE = "Supercruise",
                            PROVING_GROUND = "ProvingGround")
 
+NETLOG_VERSION = _enum(VERSION_2_0 = "<=2.0",
+                       VERSION_2_1 = "2.1+")
+
 class NetlogLineFactory():
     @staticmethod
     def get_line(line_time, line):
         parsed_line = _SystemLine.parse_netlog_line(line_time, line)
-        if parsed_line is not None:
-            return parsed_line
-        else:
-            return None
+        
+        return parsed_line
 
 class _SystemLine(edevent.BaseEvent):
     def __init__(self,
+                 version,
                  line_time,
                  system_name,
                  num_bodies = 0,
+                 system_position = None,
                  position = (0.0, 0.0, 0.0),
                  ship_status = NETLOG_SHIP_STATUS.UNKNOWN):
         edevent.BaseEvent.__init__(self,NETLOG_LINE_TYPE.SYSTEM, line_time)
 
+        self._version = version
         self._name = system_name
         self._num_bodies = num_bodies
         self._position = position
         self._ship_status = ship_status
-        
-        # Even though this is for parsing a Netlog line
-        # we are going to hack in the EDSM information
-        # about this system.
-        #
-        # Why?
-        #
-        # Well for one this is the only place to get
-        # access to all the information. Two, FD may
-        # add a bunch of this information in at a 
-        # later date and time.
+
+        # Now that FD is supplying the system coordinates
+        # we should look at pulling systems by cube/sphere
+        # rather than by system name.        
         edsm_db = edsmdb.get_instance()
-        
         self._distances = edsm_db.get_distances(self._name)
 
-        system = edsm_db.get_system(self._name)
-        if system:
-            self._system_coordinates = system.position
-        else:
-            self._system_coordinates = None
+        if system_position:
+            self._system_coordinates = system_position
+        else:            
+            system = edsm_db.get_system(self._name)
+            if system:
+                self._system_coordinates = system.position
+            else:
+                self._system_coordinates = None
 
     @classmethod
     def parse_netlog_line(cls, line_time, line):
         if 'SystemName' in line:
             system = line['SystemName']
+            
+            if 'StarPos' in line:
+                star_pos = tuple(float(f) for f in line['StarPos'].split(","))
+                version = NETLOG_VERSION.VERSION_2_1
+            else:
+                star_pos = None
+                version = NETLOG_VERSION.VERSION_2_0
             
             if 'Body' in line:
                 body = int(line['Body'])
@@ -85,7 +91,13 @@ class _SystemLine(edevent.BaseEvent):
                 else:
                     status = NETLOG_SHIP_STATUS.UNKNOWN
                     
-            return cls(line_time, system, num_bodies = body, position = pos, ship_status = status)
+            return cls(version,
+                       line_time,
+                       system,
+                       num_bodies = body,
+                       system_position = star_pos,
+                       position = pos,
+                       ship_status = status)
         else:
             return None
             
@@ -112,6 +124,9 @@ class _SystemLine(edevent.BaseEvent):
                 
             json_dict['Distances'] = dict_list
 
+    def get_version(self):
+        return self._version
+    
     def get_name(self):
         return self._name
 
@@ -124,6 +139,12 @@ class _SystemLine(edevent.BaseEvent):
     def get_ship_status(self):
         return self._ship_status
 
+    def get_system_coordinates(self):
+        return self._system_coordinates
+    
+    def get_distances(self):
+        return self._distances
+    
     def __str__(self):
         return edevent.BaseEvent.__str__(self) + ", Name [" + self._name + "], Bodies [" + str(self._num_bodies) + "], Position [" + str(self._position) + "], Ship Status [" + self._ship_status + "]"
 

@@ -171,6 +171,10 @@ class EDConfig(object):
     def was_upgraded(self):
         return self._was_upgraded
     
+    @staticmethod
+    def get_version():
+        return "2.2.2"
+    
     def get_config_version(self):
         return self._version
     

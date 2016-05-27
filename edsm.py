@@ -12,6 +12,8 @@ import datetime
 import wx
 import logging
 import plugins
+from netlogline import NETLOG_VERSION
+from edconfig import EDConfig
 
 class EDSMConfig(object):
     def __init__(self):
@@ -189,11 +191,17 @@ class EDSM(plugins.ThirdPartyPlugin):
             self._config.set_last_time(event.get_time())
             self._config.set_last_system(_name)
             
-            _url = "http://www.edsm.net/api-logs-v1/set-log?commanderName=%s&apiKey=%s&systemName=%s&dateVisited=%s" % (urllib.quote_plus(_cmdr), urllib.quote_plus(_apikey), urllib.quote_plus(_name), urllib.quote_plus(_time))
+            _url = "http://www.edsm.net/api-logs-v1/set-log?fromSoftware=%s&fromSoftwareVersion=%s&commanderName=%s&apiKey=%s&systemName=%s&dateVisited=%s" % ("edproxy", EDConfig.get_version(),urllib.quote_plus(_cmdr), urllib.quote_plus(_apikey), urllib.quote_plus(_name), urllib.quote_plus(_time))
+
+            if event.get_version() == NETLOG_VERSION.VERSION_2_1 and event.get_system_coordinates():
+                position = event.get_system_coordinates()
+                _url = "%s&x=%s&y=%s&z=%s" % (_url,
+                                              urllib.quote_plus(str(position[0])),
+                                              urllib.quote_plus(str(position[1])),
+                                              urllib.quote_plus(str(position[2])))
+                             
             self._log.debug(_url)
-            _t0 = datetime.datetime.utcnow()
             response = urllib2.urlopen(_url)
-            self._log.debug("time: %s" % str(datetime.datetime.utcnow() - _t0))
 
             ret = (response.getcode() == 200)
             
@@ -217,7 +225,7 @@ if __name__ == "__main__":
     print '4'
     
     _t0 = datetime.datetime.utcnow()
-    edparser.EDNetlogParser.parse_past_logs(edconfig.get_instance().get_netlog_path(),
+    edparser.EDNetlogParser.parse_past_logs("/Users/wes/src/pydev/edproxy/test", #edconfig.get_instance().get_netlog_path(),
                                             "netLog",
                                             __log_parser,
                                             args = (edsm_listener, ),

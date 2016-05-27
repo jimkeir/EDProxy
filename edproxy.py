@@ -32,14 +32,13 @@ from __builtin__ import range
 import edsendkeys
 
 import edsmdb
-import datetime
+from edconfig import EDConfig
+# import datetime
 
 class EDProxyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         self.log = logging.getLogger("com.fussyware.edproxy");
         self.log.setLevel(logging.DEBUG)
-        
-        self._version_number = "2.2.0"
         
         # begin wxGlade: EDProxyFrame.__init__
         kwds["style"] = wx.CAPTION | wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.CLIP_CHILDREN
@@ -84,7 +83,7 @@ class EDProxyFrame(wx.Frame):
 
     def __set_properties(self):
         # begin wxGlade: EDProxyFrame.__set_properties
-        self.SetTitle(_("Elite: Dangerous Proxy - v" + self._version_number))
+        self.SetTitle(_("Elite: Dangerous Proxy - v" + EDConfig.get_version()))
         self.SetIcon(edicon.GetIcon())
 #         self.SetIcon(wx.Icon('edicon.ico', wx.BITMAP_TYPE_ICO))
         self.SetMinClientSize(wx.Size(400, -1))
@@ -157,15 +156,13 @@ class EDProxyFrame(wx.Frame):
             settings.ShowModal()
             settings.Destroy()
         elif self._edconfig.was_upgraded():
-            message = "Edproxy has been successfully upgraded to version " + self._version_number + "\n\n"
+            message = "Edproxy has been successfully upgraded to version " + EDConfig.get_version() + "\n\n"
             message = message + "New to this release is:\n"
-            message = message + "- Now using AppConfigLocal.xml instead of AppConfig.xml.\n"
-            message = message + "- Separated out the net Log directory and AppConfig directories in the configuration and settings.\n"
-            message = message + "- Auto-detect directory paths if none have been set.\n"
-            message = message + "- Do not allow special characters from systems names when saving image files."
+            message = message + "- Support for the Elite: Engineers release.\n"
+            message = message + "- Support for new (x, y, z) parameters in the EDSM plugin."
             msg = wx.MessageDialog(parent = self,
                                    message = message,
-                                   caption = "Upgrade to Version " + self._version_number,
+                                   caption = "Upgrade to Version " + EDConfig.get_version(),
                                    style = wx.OK | wx.ICON_INFORMATION)
             msg.ShowModal()
             msg.Destroy()
@@ -207,9 +204,9 @@ class EDProxyFrame(wx.Frame):
             wx.PostEvent(self.GetEventHandler(), wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.start_button.GetId()))
 
         if sys.platform == "win32":
-            self._updater = edupdate.EDWin32Updater(self, self._version_number)#, base_url="file:///D:/Temp")
+            self._updater = edupdate.EDWin32Updater(self, EDConfig.get_version())#, base_url="file:///D:/Temp")
         elif sys.platform == "darwin":
-            self._updater = edupdate.EDMacOSXUpdater(self, self._version_number)#, base_url="file:///Users/wes/src/pydev/edproxy/testbed")
+            self._updater = edupdate.EDMacOSXUpdater(self, EDConfig.get_version())#, base_url="file:///Users/wes/src/pydev/edproxy/testbed")
         
         self.Bind(edupdate.EVT_UPGRADE_EVENT, self.__on_upgrade)
     
@@ -345,11 +342,6 @@ class EDProxyFrame(wx.Frame):
 
         event = edsmdb.StarMapDbUpdatedEvent()
         client.send(event)
-#         try:
-#             self._lock.acquire()
-#             client.set_onrecv_listener(self.__on_net_recv)
-#         finally:
-#             self._lock.release()
 
     def __on_async_parser_event(self, event):
         if event.get_line_type() == netlogline.NETLOG_LINE_TYPE.SYSTEM:
@@ -383,17 +375,18 @@ class EDProxyFrame(wx.Frame):
         client.send(event)
 
     def __on_new_client(self, client, addr):
-        try:
-            self.log.info("New remote client at [%s] connected", addr)
-            self._lock.acquire()
-#             for _client in self._client_list:
-#                 if _client.get_peername()[0] == client.get_peername()[0]:
-#                     self.log.debug("remote client in list close: [%s]", _client.get_peername())
-#                     _client.close()
-#                     self.log.debug("Done with close")
-        finally:
-            self.log.debug("Good to go with the new client.")
-            self._lock.release()
+        self.log.info("New remote client at [%s] connected", addr)
+        
+#         try:
+#             self._lock.acquire()
+# #             for _client in self._client_list:
+# #                 if _client.get_peername()[0] == client.get_peername()[0]:
+# #                     self.log.debug("remote client in list close: [%s]", _client.get_peername())
+# #                     _client.close()
+# #                     self.log.debug("Done with close")
+#         finally:
+#             self.log.debug("Good to go with the new client.")
+#             self._lock.release()
 
         _thread = threading.Thread(target = self.__new_client_thread, args = (client, addr))
         _thread.daemon = True
