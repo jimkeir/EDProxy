@@ -73,6 +73,7 @@ def get_database_dir():
     return os.path.join(get_edproxy_dir(), "databases")
 
 def is_ed_running():
+#     return True
     for p in psutil.process_iter():
         try:
             pinfo = p.as_dict(attrs = ['pid', 'name'])
@@ -80,7 +81,7 @@ def is_ed_running():
                 return True
         except psutil.NoSuchProcess:
             pass
-
+ 
     return False
 
 def create_local_appconfig(path):

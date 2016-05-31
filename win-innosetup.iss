@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Edproxy"
-#define MyAppVersion "2.2.2"
+#define MyAppVersion "2.3.0"
 #define MyAppPublisher "Fussyware"
 #define MyAppURL "https://bitbucket.org/westokyo/edproxy/overview"
 #define MyAppExeName "edproxy.exe"
@@ -23,7 +23,8 @@ DefaultDirName={pf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputBaseFilename=edproxy-win32-{#MyAppVersion}
-SetupIconFile=D:\Dropbox\Weston Desktop\Documents\src\pydev\edproxy\edicon.ico
+;SetupIconFile=D:\Dropbox\Weston Desktop\Documents\src\pydev\edproxy\edicon.ico
+SetupIconFile=C:\Users\IEUser\Dropbox\Weston Desktop\Documents\src\pydev\edproxy\edicon.ico
 Compression=lzma
 SolidCompression=yes
 

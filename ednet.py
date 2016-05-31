@@ -9,6 +9,8 @@ import edconfig
 import edevent
 import ijpython
 import wrapper
+import tornado.websocket
+import urllib
 
 def _enum(**enums):
     return type('Enum', (), enums)
@@ -58,11 +60,12 @@ class EDDiscoveryMessageBase(object):
         return "Discovery Message: Type [%s], Name [%s]" % (self.get_type(), self.get_name())
 
 class EDDiscoveryMessageAnnounce(EDDiscoveryMessageBase):
-    def __init__(self, service_name, ipv4, port):
+    def __init__(self, service_name, ipv4, port, http_port = 8097):
         super(EDDiscoveryMessageAnnounce, self).__init__(DISCOVERY_SERVICE_TYPE.ANNOUNCE, service_name)
 
         self.service_dict['ipv4'] = ipv4
         self.service_dict['port'] = port
+        self.service_dict['http_port'] = http_port
 
     def get_ipv4(self):
         return self.service_dict['ipv4']
@@ -70,6 +73,9 @@ class EDDiscoveryMessageAnnounce(EDDiscoveryMessageBase):
     def get_port(self):
         return self.service_dict['port']
 
+    def get_http_port(self):
+        return self.service_dict['http_port']
+    
     def __str__(self):
         return "%s, IPv4 [%s], Port [%s]" % (super(EDDiscoveryMessageAnnounce, self).__str__(), self.get_ipv4(), str(self.get_port()))
 
@@ -328,7 +334,7 @@ class RecvNetEventFactory(object):
         else:
             return None
         
-class EDProxyClient():
+class EDProxyClient(object):
     def __init__(self, sock):
         self.log = logging.getLogger("com.fussyware.edproxy")
         
@@ -488,6 +494,8 @@ class EDProxyClient():
                 json_map = self._json_items.get_item()
 
                 if 'Type' in json_map:
+                    self.log.debug("Received message: [%s]" % str(json_map))
+                    
                     if json_map['Type'] == 'Init':
                         self.__handle_init(json_map)
                     elif json_map['Type'] == 'Heartbeat':
@@ -506,197 +514,226 @@ class EDProxyClient():
         self.close()
         self._event_queue.post(self)
 
-# class EDProxyClient():
-#     def __init__(self, sock):
-#         self.log = logging.getLogger("com.fussyware.edproxy")
-#         
-#         self._running = True
-#         self._initialized = False
-# 
-#         self._lock = threading.Lock()
-#         self._send_lock = threading.Lock()
-#         self._conditional = threading.Condition(self._lock)
-#         self._register_list = list()
-#         self._start_time = None
-#         self._sock = sock
-#         self._sock.settimeout(60)
-#         self._peername = self._sock.getpeername()
-#         self._heartbeat = None
-#         self._heartbeat_event = threading.Event()
-#         
-#         self._event_queue = EDEventQueue()
-#         self._recv_event_queue = EDEventQueue()
-# 
-#         _thread = threading.Thread(target = self.__run)
-#         _thread.daemon = True
-#         _thread.start()
-# 
-#     def set_ondisconnect_listener(self, disconnect_listener):
-#         self._event_queue.add_listener(disconnect_listener)
-#         
-#     def set_onrecv_listener(self, recv_listener):
-#         self._recv_event_queue.add_listener(recv_listener)
-#         
-#     def get_peername(self):
-#         return self._peername
-#         
-#     def is_running(self):
-#         try:
-#             self._lock.acquire()
-#             return self._running
-#         finally:
-#             self._lock.release()
-# 
-#     def wait_for_initialized(self, timeout = None):
-#         if timeout and timeout < 0:
-#             timeout = None
-# 
-#         try:
-#             self._lock.acquire()
-#             if not self._initialized and self._running:
-#                 self._conditional.wait(timeout)
-# 
-#                 if not self._initialized and self._running:
-#                     raise TimeoutException("Timeout occurred waiting for initialization.")
-#         except:
-#             raise
-#         finally:
-#             self._lock.release()
-# 
-#     def is_initialized(self):
-#         try:
-#             self._lock.acquire()
-#             return self._initialized
-#         finally:
-#             self._lock.release()
-# 
-#     def get_start_time(self):
-#         return self._start_time
-# 
-#     def close(self):
-#         if self.is_running():
-#             try:
-#                 self._lock.acquire()
-#                 self._running = False
-#                 
-#                 try:
-#                     self._sock.shutdown(socket.SHUT_RDWR)
-#                 except:
-#                     pass
-#     
-#                 try:
-#                     self._sock.close()
-#                 except:
-#                     pass
-#             finally:
-#                 self._lock.release()
-# 
-#     def send(self, line):
-#         if self.is_initialized() and self.is_running():
-#             _type = line.get_line_type()
-#             
-#             if _type in self._register_list or _type == "Pong":
-#                 try:
-#                     self._send_lock.acquire()
-# #                     self.log.debug(line.get_json())
-#                     self._sock.sendall(line.get_json())
-#                 except Exception, e:
-#                     self.log.exception(e)
-#                     self.close()
-#                 finally:
-#                     self._send_lock.release()
-#         
-#     def __set_running(self, enabled):
-#         try:
-#             self._lock.acquire()
-#             self._running = enabled
-#         finally:
-#             self._lock.release()
-#             
-#     def __handle_init(self, json_map):
-#         self._register_list = json_map['Register']
-#         start_time = json_map['StartTime']
-# 
-#         if 'Heartbeat' in json_map:
-#             self._heartbeat = json_map['Heartbeat']
-#             if self._heartbeat != None and self._heartbeat > 0:
-#                 self._heartbeat = self._heartbeat * 2
-#                 
-#                 _thread = threading.Thread(target = self.__heartbeat_run)
-#                 _thread.daemon = True
-#                 _thread.start()
-#             
-#         if start_time == "all":
-#             self._start_time = datetime.datetime.fromtimestamp(0)
-#         elif start_time == "now":
-#             self._start_time = None
-#         else:
-#             __date = start_time
-#             try:
-#                 __date = __date[:__date.index(".")]
-#             except ValueError:
-#                 pass
-# 
-#             self._start_time = datetime.datetime.strptime(__date, "%Y-%m-%dT%H:%M:%S")
-# 
-#         try:
-#             self._lock.acquire()
-#             self._initialized = True
-#             self._conditional.notify()
-#         finally:
-#             self._lock.release()
-# 
-#     def __handle_heartbeat(self, json_map):
-#         self._heartbeat_event.set()
-#     
-#     def __heartbeat_run(self):
-#         while self.is_running():
-#             if self._heartbeat_event.wait(self._heartbeat):
-# #                 self.log.debug("Recieved a heartbeat message return pong.")
-#                 self.send(PongEvent())
-#             else:
-#                 self.log.error("Two heartbeats were missed! Closing down the socket.")
-#                 self.close()
-#                 
-#             self._heartbeat_event.clear()
-#     
-#     def __run(self):
-#         while self.is_running():
-#             try:
-#                 rr, _, _ = select.select([self._sock], [], [], 5)
-#             except:
-#                 self.__set_running(False)
-#                 
-#             if rr and self.is_running():
-#                 json_map = None
-# 
-#                 try:
-#                     json_map = self._sock.recv(1024)
-#                 except:
-#                     self.__set_running(False)
-# 
-#                 if json_map:
-#                     json_map = json.loads(json_map)
-#                     if json_map['Type'] == 'Init':
-#                         self.__handle_init(json_map)
-#                     elif json_map['Type'] == 'Heartbeat':
-#                         self.__handle_heartbeat(json_map)
-#                     else:
-#                         event = RecvNetEventFactory.get_recv_event(json_map)
-#                         if event:
-#                             self._recv_event_queue.post(event)
-#                         
-#         try:
-#             self._sock.shutdown(socket.SHUT_RDWR)
-#         except:
-#             pass
-# 
-#         try:
-#             self._sock.close()
-#         except:
-#             pass
-# 
-#         self.log.info("Exiting proxy client read thread.")
-#         
-#         self.__set_running(False)        
-#         self._event_queue.post(self)
+class WebSocketHandler(tornado.websocket.WebSocketHandler):
+    def initialize(self, websocket_server):
+        tornado.websocket.WebSocketHandler.initialize(self)
+        
+        self._websocket_server = websocket_server
+        
+    def open(self, *args):
+        self._log = logging.getLogger("com.fussyware.edproxy")
+
+        self.stream.set_nodelay(True)        
+        self._peername = self.stream.socket.getpeername() 
+        
+        self._heartbeat = None
+        self._heartbeat_event = threading.Event()
+        
+        self._event_queue = edevent.EDEventQueue()
+        self._recv_event_queue = edevent.EDEventQueue()
+
+        self._register_list = list()
+        self._start_time = None
+
+        self._lock = threading.Lock()
+        self._conditional = threading.Condition(self._lock)
+
+        self._running = True
+        self._initialized = False
+
+        self._websocket_server._post(self, self._peername)
+        
+
+    def on_message(self, message):
+        try:   
+            json_map = json.loads(message)
+
+            if 'Type' in json_map:
+                if json_map['Type'] == 'Init':
+                    self.__handle_init(json_map)
+                else:
+                    event = RecvNetEventFactory.get_recv_event(json_map, self)
+                    if event:
+                        self._log.debug("Received [%s]" % str(event))
+                        self._recv_event_queue.post(event)
+        except Exception, e:
+            self._log.exception(e)
+        
+    def on_pong(self, data):
+        self._heartbeat_event.set()
+    
+    def on_close(self):
+        try:
+            self._log.debug("Websocket is now closed.")
+            self._lock.acquire()
+            self._running = False
+            self._event_queue.post(self)
+        finally:
+            self._lock.release()
+        
+    # Start of EDProxy custom routines
+    def get_peername(self):
+        return self._peername
+
+    def set_ondisconnect_listener(self, disconnect_listener):
+        self._event_queue.add_listener(disconnect_listener)
+        
+    def set_onrecv_listener(self, recv_listener):
+        self._recv_event_queue.add_listener(recv_listener)
+        
+    def is_running(self):
+        try:
+            self._lock.acquire()
+            return self._running
+        finally:
+            self._lock.release()
+
+    def is_initialized(self):
+        try:
+            self._lock.acquire()
+            return self._initialized
+        finally:
+            self._lock.release()
+
+    def wait_for_initialized(self, timeout = None):
+        if timeout and timeout < 0:
+            timeout = None
+
+        try:
+            self._lock.acquire()
+            if not self._initialized and self._running:
+                self._conditional.wait(timeout)
+
+                if not self._initialized and self._running:
+                    raise TimeoutException("Timeout occurred waiting for initialization.")
+        except:
+            raise
+        finally:
+            self._lock.release()
+
+    def get_start_time(self):
+        return self._start_time
+
+    def send(self, event):
+        if self.is_initialized() and self.is_running():
+            _type = event.get_line_type()
+            
+            if _type in self._register_list:
+                try:
+                    self._log.debug(event.get_json())
+                    self.write_message(event.get_json())
+                except:
+                    self._log.error("Websocket was already closed on send.")
+
+    def __heartbeat_run(self):
+        if self.is_running():
+            try:
+                self.ping("ping")
+                
+                if self._heartbeat_event.wait(self._heartbeat * 2):
+                    if self.is_running():
+                        # Start the timer back up
+                        self._heartbeat_timer = threading.Timer(self._heartbeat, self.__heartbeat_run)
+                        self._heartbeat_timer.start()
+                else:
+                    self._log.error("Two heartbeats were missed! Closing down the socket.")
+                    self.close()
+                    
+                self._heartbeat_event.clear()
+            except:
+                self._log.error("Websocket was already closed during ping")
+
+    def __handle_init(self, json_map):
+        self._register_list = json_map['Register']
+        self._register_list.append("StarMapUpdated")
+        self._register_list.append("GetDistances")
+        self._register_list.append("GetDistancesResult")
+
+        start_time = json_map['StartTime']
+
+        if 'Heartbeat' in json_map:
+            self._heartbeat = json_map['Heartbeat']
+            if self._heartbeat != None and self._heartbeat > 0:
+                self._heartbeat_timer = threading.Timer(self._heartbeat, self.__heartbeat_run)
+                self._heartbeat_timer.start()
+            
+        if start_time == "all":
+            self._start_time = datetime.datetime.fromtimestamp(0)
+        elif start_time == "now":
+            self._start_time = None
+        else:
+            __date = start_time
+            try:
+                __date = __date[:__date.index(".")]
+            except ValueError:
+                pass
+
+            self._start_time = datetime.datetime.strptime(__date, "%Y-%m-%dT%H:%M:%S")
+
+        try:
+            self._lock.acquire()
+            self._initialized = True
+            self._conditional.notify()
+        finally:
+            self._lock.release()
+
+class PictureWebHandler(tornado.web.StaticFileHandler):
+    def parse_url_path(self, url_path):
+        return tornado.web.StaticFileHandler.parse_url_path(self, urllib.unquote_plus(url_path))
+    
+class EDProxyWebServer(object):
+    def __init__(self, port):
+        self._log = logging.getLogger("com.fussyware.edproxy")
+        
+        self._port = port
+        self._running = False
+
+        self._lock = threading.Lock()
+
+        self._event_queue = edevent.EDEventQueue()
+        
+    def add_listener(self, callback, *args, **kwargs):
+        self._event_queue.add_listener(callback, *args, **kwargs)
+
+    def start(self):
+        if not self.is_running():
+            self._lock.acquire()
+            self._running = True
+
+            self._thread = threading.Thread(target = self.__websocket_server_thread)
+            self._thread.daemon = True
+            self._thread.start()
+
+            self._lock.release()
+
+    def stop(self):
+        if self.is_running():
+            self._lock.acquire()
+            self._running = False
+            self._lock.release()
+
+            tornado.ioloop.IOLoop.instance().stop()
+
+            self._thread.join()
+
+    def is_running(self):
+        self._lock.acquire()
+        ret = self._running
+        self._lock.release()
+
+        return ret
+        
+    def _post(self, websock, addr):
+        self._event_queue.post(websock, addr)
+
+    def __websocket_server_thread(self):
+        image_path = edconfig.get_instance().get_image_path()
+        print image_path
+        settings = { "static_path": image_path }
+        _app = tornado.web.Application([(r'/v1', WebSocketHandler, dict(websocket_server = self)),
+                                        (r'/(.+\..+)', PictureWebHandler, dict(path=settings['static_path']))],
+                                       **settings)
+        _http_server = _app.listen(self._port)
+                
+        tornado.ioloop.IOLoop.instance().start()
+        _http_server.stop()

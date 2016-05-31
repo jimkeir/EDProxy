@@ -3,14 +3,10 @@ from watchdog.events import PatternMatchingEventHandler
 import logging
 from edevent import EDEventQueue
 import threading
-from BaseHTTPServer import HTTPServer
-from SocketServer import ThreadingMixIn
-from SimpleHTTPServer import SimpleHTTPRequestHandler
 import os
 import sys
 import time
 from datetime import datetime
-import json
 import edutils
 import PIL.Image
 import urllib
@@ -41,20 +37,6 @@ class _EDPictureEvent(edevent.BaseEvent):
     def _fill_json_dict(self, json_dict):
         json_dict['ImageUrl'] = self.url
     
-class EDPictureDirHTTPRequestHandler(SimpleHTTPRequestHandler):
-    def translate_path(self, path):
-        unquote_path = urllib.unquote_plus(path)
-        for _path in _http_root_paths:
-            _path = _path + unquote_path
-            
-            if (os.path.exists(_path)):
-                return _path
-            
-        return SimpleHTTPRequestHandler.translate_path(self, path)
-    
-class _ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
-    """ Handle requests for HTTP server in a thread."""
-
 class EDPictureMonitor(PatternMatchingEventHandler):
     def __init__(self, path = ''):
         PatternMatchingEventHandler.__init__(self, patterns = [ "*.bmp" ], ignore_directories = True)
@@ -138,15 +120,14 @@ class EDPictureMonitor(PatternMatchingEventHandler):
     
             self._url = "http://%s:%d/" % (edutils.get_ipaddr(), 8097)
 
-            self._http_server = _ThreadedHTTPServer(("", 8097), EDPictureDirHTTPRequestHandler)
             self._thread = threading.Thread(target = self.__run_httpd)
             self._thread.daemon = True
             self._thread.start()
         
     def stop(self):
         if self._observer:
-            self._http_server.server_close()
             self._observer.stop()
+            self._observer.join()
             self._observer = None
         
     def __wait_for_finish(self, path):
@@ -212,18 +193,15 @@ class EDPictureMonitor(PatternMatchingEventHandler):
             config_path, _ = os.path.split(os.path.normpath(edconfig.get_instance().get_netlog_path()))
             config_path = os.path.join(config_path, "AppConfig.xml")
 
-            edparser.EDNetlogParser.parse_past_logs(edconfig.get_instance().get_netlog_path(),
-                                                    edutils.get_logfile_prefix(config_path),
-                                                    self.__log_parser)
+            edparser.parse_past_logs(edconfig.get_instance().get_netlog_path(),
+                                     edutils.get_logfile_prefix(config_path),
+                                     self.__log_parser)
             edconfig.get_instance().set_image_name_replacement(self._name_replacement)
             
         try:
             self._observer.start()
-            self._http_server.serve_forever()
         except:
             pass
-        
-        self.log.info("Exiting httpd thread.")
         
 def __test_on_created(path):
     print "Got path: ", path

@@ -46,7 +46,8 @@ class _SystemLine(edevent.BaseEvent):
         # we should look at pulling systems by cube/sphere
         # rather than by system name.        
         edsm_db = edsmdb.get_instance()
-        self._distances = edsm_db.get_distances(self._name)
+#         self._distances = edsm_db.get_distances(self._name, 120.0)
+        self._distances = set()
 
         if system_position:
             self._system_coordinates = system_position
@@ -112,7 +113,14 @@ class _SystemLine(edevent.BaseEvent):
             
         if self._distances:
             dict_list = list()
-            for distance in self._distances:
+            
+            max_list_size = len(self._distances)
+            if max_list_size > 10:
+                max_list_size = 10
+                
+            for i in xrange(0, max_list_size):
+                distance = self._distances[i]
+                
                 item = dict()
                 item['name'] = distance.sys2.name
                 item['distance'] = distance.distance

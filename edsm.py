@@ -23,6 +23,9 @@ class EDSMConfig(object):
         self._cancel_time = None
         self._lock = threading.Lock()
         
+        # Python issue7980 bug workaround
+        datetime.datetime.strptime('2012-01-01', '%Y-%m-%d')
+
         self.__load()
         
     def __load(self):
@@ -225,11 +228,11 @@ if __name__ == "__main__":
     print '4'
     
     _t0 = datetime.datetime.utcnow()
-    edparser.EDNetlogParser.parse_past_logs("/Users/wes/src/pydev/edproxy/test", #edconfig.get_instance().get_netlog_path(),
-                                            "netLog",
-                                            __log_parser,
-                                            args = (edsm_listener, ),
-                                            start_time = _config.get_last_time())
+    edparser.parse_past_logs("/Users/wes/src/pydev/edproxy/test", #edconfig.get_instance().get_netlog_path(),
+                            "netLog",
+                            __log_parser,
+                            args = (edsm_listener, ),
+                            start_time = _config.get_last_time())
     print '5', (datetime.datetime.utcnow() - _t0)
 
     time.sleep(5.0)

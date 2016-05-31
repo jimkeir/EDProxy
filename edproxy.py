@@ -15,7 +15,7 @@ import gettext
 
 import os, sys
 import threading
-import logging, logging.handlers
+import logging.handlers
 
 import edutils
 import ednet
@@ -100,7 +100,7 @@ class EDProxyFrame(wx.Frame):
         self._lock = threading.Lock()
         self._client_list = list()
         
-        self._netlog_parser = edparser.EDNetlogParser()
+        self._netlog_parser = edparser.EDNetlogMonitor()
         self._netlog_parser.add_listener(self.__on_async_parser_event)
         
         self._edpicture = edpicture.EDPictureMonitor()
@@ -112,6 +112,9 @@ class EDProxyFrame(wx.Frame):
         self._proxy_server = ednet.EDProxyServer(45550)
         self._proxy_server.add_listener(self.__on_new_client)
         
+        self._websocket_server = ednet.EDProxyWebServer(8097)
+        self._websocket_server.add_listener(self.__on_new_client)
+
         self._plugin_operational_list = list()
         self._plugin_list = list()
         
@@ -197,7 +200,6 @@ class EDProxyFrame(wx.Frame):
                 settings.ShowModal()
                 settings.Destroy()
             else:
-                self.__check_and_restart_ed()
                 paths_are_good = True
 
         if self._edconfig.get_edproxy_startup():
@@ -217,47 +219,27 @@ class EDProxyFrame(wx.Frame):
         try:
             event = edsmdb.StarMapDbUpdatedEvent()
             
-            self.log.debug("Sending new event: [%s]", event) 
+            self.log.debug("Sending new edsm event: [%s]", event) 
             self._lock.acquire()
             for client in self._client_list:
                 client.send(event)
         finally:
             self._lock.release()
     
-    def __check_and_restart_ed(self):
-        appconfig_path = self._edconfig.get_appconfig_path()             
-        local_appconfig_path = os.path.join(appconfig_path, "AppConfigLocal.xml")
-        restart_ed = False
-         
-        if not os.path.exists(local_appconfig_path):
-            edutils.create_local_appconfig(appconfig_path)
-            restart_ed = True
-        elif not edutils.is_verbose_enabled(local_appconfig_path):
-            edutils.set_verbose_enabled(local_appconfig_path, True)
-            edutils.set_datestamp_enabled(local_appconfig_path, True)
-            restart_ed = True
-
-        if restart_ed:
-            while edutils.is_ed_running():
-                msg = wx.MessageDialog(parent = self,
-                                       message = "Elite: Dangerous is currently running and Verbose logging will not take effect until Elite: Dangerous is restarted. Please shutdown Elite: Dangerous before continuing.",
-                                       caption = "Restart of Elite: Dangerous Required",
-                                       style = wx.OK | wx.ICON_EXCLAMATION)
-                msg.ShowModal()
-                msg.Destroy()
-
     def __stop(self):
         if not self.start_button.IsEnabled():
             self.log.debug("Stop discovery service")
             self._discovery_service.stop()
             self.log.debug("Stop Proxy server")
             self._proxy_server.stop()
+            self.log.debug("Stop Websocket Proxy server")
+            self._websocket_server.stop()
             self.log.debug("Stop netlog parser")
             self._netlog_parser.stop()
             self.log.debug("Stop image acquisition service")
             self._edpicture.stop()
             self.log.debug("Stopping EDSM database background updater")
-            edsmdb.get_instance().stop_background_update()
+            edsmdb.get_instance().close()
 
             self.log.debug("Stop all proxy clients and 3rd party plugins")
             self.client_listview.DeleteAllItems()
@@ -334,11 +316,11 @@ class EDProxyFrame(wx.Frame):
             self._lock.release()
 
         if client.get_start_time() is not None:
-            edparser.EDNetlogParser.parse_past_logs(self._edconfig.get_netlog_path(),
-                                                    self._netlog_parser.get_netlog_prefix(),
-                                                    self.__on_sync_parser_event,
-                                                    args = (client,),
-                                                    start_time = client.get_start_time())
+            edparser.parse_past_logs(self._edconfig.get_netlog_path(),
+                                     self._netlog_parser.get_netlog_prefix(),
+                                     self.__on_sync_parser_event,
+                                     args = (client,),
+                                     start_time = client.get_start_time())
 
         event = edsmdb.StarMapDbUpdatedEvent()
         client.send(event)
@@ -470,11 +452,11 @@ class EDProxyFrame(wx.Frame):
         # The third time should absolutely be a no-op, but is there to 
         # just make sure we got everything.
         for _ in range(3):
-            edparser.EDNetlogParser.parse_past_logs(self._edconfig.get_netlog_path(),
-                                                    self._netlog_parser.get_netlog_prefix(),
-                                                    self.__plugin_sync_parser_event,
-                                                    args = (plugin,),
-                                                    start_time = plugin.get_last_interaction_time())
+            edparser.parse_past_logs(self._edconfig.get_netlog_path(),
+                                     self._netlog_parser.get_netlog_prefix(),
+                                     self.__plugin_sync_parser_event,
+                                     args = (plugin,),
+                                     start_time = plugin.get_last_interaction_time())
         self.log.debug("Done parse old logs.")
         self.plugin_listview.SetStringItem(index, 1, "Waiting for data...")
         
@@ -487,7 +469,8 @@ class EDProxyFrame(wx.Frame):
 
     def on_start(self, event):  # wxGlade: EDProxyFrame.<event_handler>
         netlog_path = self._edconfig.get_netlog_path()
-        appconfig_path = os.path.join(self._edconfig.get_appconfig_path(), "AppConfigLocal.xml")
+        appconfig_path = os.path.join(self._edconfig.get_appconfig_path(), "AppConfig.xml")
+#         appconfig_path = os.path.join(self._edconfig.get_appconfig_path(), "AppConfigLocal.xml")
         
         if not netlog_path or not os.path.exists(netlog_path):
             msg = wx.MessageDialog(parent = self,
@@ -506,20 +489,22 @@ class EDProxyFrame(wx.Frame):
         else:
             self.start_button.Disable()
 
-            self._edsm_progress_dialog = wx.ProgressDialog("Synchronizing EDSM Database", "Synchronizing EDSM Database...", parent = self)
-            self._edsm_progress_dialog.SetSize((480, 103))
-            self._edsm_progress_dialog.Center()
-
             edsm_db = edsmdb.get_instance()
-            edsm_db.update(onprogress=self.__edsm_on_progress)
-             
-            self._edsm_progress_dialog.Destroy()
-            wx.SafeYield()
+            edsm_db.connect()
+
+            if edsm_db.is_install_required():
+                self._edsm_progress_dialog = wx.ProgressDialog("Synchronizing EDSM Database", "Synchronizing EDSM Database...", parent = self)
+                self._edsm_progress_dialog.SetSize((480, 103))
+                self._edsm_progress_dialog.Center()
+    
+                edsm_db.install_edsmdb(onprogress=self.__edsm_on_progress)
+    
+                self._edsm_progress_dialog.Destroy()
+                wx.SafeYield()
 
             edsm_db.start_background_update(onupdate = self.__edsm_on_update)
 
             try:
-                self.__check_and_restart_ed()
                 self._netlog_parser.set_netlog_prefix(edutils.get_logfile_prefix(appconfig_path))
                 
                 if os.path.exists(self._edconfig.get_image_path()):
@@ -543,6 +528,7 @@ class EDProxyFrame(wx.Frame):
                 self.log.debug("Done plugins")
                 
                 self._proxy_server.start()
+                self._websocket_server.start()
                 self._discovery_service.start()
 
                 # Announce to the world that EDProxy is up and running.
@@ -557,11 +543,14 @@ class EDProxyFrame(wx.Frame):
 
                 self._discovery_service.stop()
                 self._proxy_server.stop()
+                self._websocket_server.stop()
                 self._edpicture.stop()
                 self._netlog_parser.stop()
 
                 self.start_button.Enable()
 
+                edsm_db.close()
+                
                 msg = wx.MessageDialog(parent = self,
                                        message = "Error starting up proxy server. Super generic error huh!? Welp, not really going to do better right now. Lazy, lazy, lazy.",
                                        caption = "Error starting proxy server",
@@ -595,6 +584,15 @@ class EDProxyApp(wx.App):
 
 # end of class EDProxyApp
 
+class LoggerWriter(object):
+    def __init__(self, logger, log_level = logging.INFO):
+        self._logger = logger
+        self._log_level = log_level
+        
+    def write(self, buf):
+        if buf and buf.rstrip():
+            self._logger.log(self._log_level, buf.rstrip())
+        
 if __name__ == "__main__":
     gettext.install("edproxy") # replace with the appropriate catalog name
       
@@ -603,14 +601,17 @@ if __name__ == "__main__":
         os.makedirs(user_dir)
  
     user_dir = os.path.join(user_dir, "edproxy.log")
-#     logging.basicConfig(format = "%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s", filename = user_dir)
+    logging.basicConfig(format = "%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s", filename = user_dir)
   
     root_log_handler = logging.handlers.RotatingFileHandler(user_dir, maxBytes=(2 * 1024 * 1024), backupCount=5)
     root_log_handler.setFormatter(logging.Formatter("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s"))
  
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
-    root_logger.addHandler(root_log_handler)
+#     root_logger.addHandler(root_log_handler)
+
+    sys.stdout = LoggerWriter(root_logger, logging.INFO)
+    sys.stderr = LoggerWriter(root_logger, logging.ERROR)
         
     edproxy = EDProxyApp(0)
     edproxy.MainLoop()

@@ -4,11 +4,12 @@ import ConfigParser
 import edpicture
 import threading
 import datetime
-import sys
-from __builtin__ import False
+import logging
 
 class EDConfig(object):
     def __init__(self):
+        self._log = logging.getLogger("com.fussyware.edproxy")
+
         self._eduser_dir = edutils.get_edproxy_dir()
         
         if not os.path.exists(self._eduser_dir):
@@ -26,6 +27,9 @@ class EDConfig(object):
         self._was_created = False
         self._was_upgraded = False
         
+        # Python issue7980 bug workaround
+        datetime.datetime.strptime('2012-01-01', '%Y-%m-%d')
+
         self.__load()
         
     def __load(self):
@@ -113,7 +117,9 @@ class EDConfig(object):
         
     def __write_selfprotected(self):
             with open(self._inifile, "w+") as outf:
+                self._log.debug("Start write out config")
                 self._config_parser.write(outf)
+                self._log.debug("Done write out config")
                 
             self._timer = None
             self._cancel_time = None
@@ -134,15 +140,7 @@ class EDConfig(object):
                 if self._timer:
                     self._timer.cancel()
 
-                    if not self._cancel_time:
-                        self._cancel_time = datetime.datetime.utcnow()
-                    else:
-                        _t = datetime.datetime.utcnow()
-                        
-                        if (_t - self._cancel_time).total_seconds() > 10:
-                            self.__write_selfprotected()
-                    
-                self._timer = threading.Timer(1.0, self.__write_config_timeout)
+                self._timer = threading.Timer(5.0, self.__write_config_timeout)
                 self._timer.start()
             finally:
                 self._lock.release()
@@ -173,7 +171,7 @@ class EDConfig(object):
     
     @staticmethod
     def get_version():
-        return "2.2.2"
+        return "2.3.0"
     
     def get_config_version(self):
         return self._version
