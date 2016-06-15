@@ -14,25 +14,16 @@ Mac OSx: [DMG File](https://bitbucket.org/westokyo/edproxy/downloads/LATEST-maco
 * [psutil](https://github.com/giampaolo/psutil)
 * [watchdog](http://pythonhosted.org/watchdog/)
 * [Pillow](https://python-pillow.github.io/)
+* SendKeys
+* ijson
+* Tornado
 
 ## Install using PIP
 
 ```
 #!bash
 
-$ pip install psutil
-```
-
-```
-#!bash
-
-$ pip install watchdog
-```
-
-```
-#!bash
-
-$ pip install Pillow
+$ pip install psutil watchdog Pillow Sendkeys tornado ijson
 ```
 
 # Design #
