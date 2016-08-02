@@ -27,6 +27,10 @@ Mac OSx: [DMG File](https://bitbucket.org/westokyo/edproxy/downloads/LATEST-maco
 $ python -m pip install psutil watchdog Pillow Sendkeys tornado ijson
 ```
 
+## Contributing ##
+
+Please see the **CONTRIBUTING.md** file for more information.
+
 # Design #
 ## Feature Modules ##
 * Service Discovery
