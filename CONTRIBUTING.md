@@ -22,12 +22,11 @@ and _Android Studio_.
 # Running the Source Code #
 
 The entry point is _edproxy.py_:
-
 ```
 $ python edproxy.py
 ```
 
-## Prerequisites for running the source code ##
+## Pre-requisites for running the source code ##
 * [Python 2.7](https://www.python.org/download/releases/2.7/)
 * [wxPython](http://www.wxpython.org/download.php)
 * [psutil](https://github.com/giampaolo/psutil)
@@ -41,7 +40,6 @@ $ python edproxy.py
 **NB:** To ensure all of the following instructions work, Python must be added
 to the PATH environment variable. By default, the following directories must
 be added:
-
 ```
 $ PATH=%PATH%;C:\Python27;C:\Python27\Scripts
 ```
@@ -52,7 +50,7 @@ $ PATH=%PATH%;C:\Python27;C:\Python27\Scripts
 $ python -m pip install psutil watchdog Pillow Sendkeys tornado ijson
 ```
 
-## Running the tests ##
+## Running the unit tests ##
 
 TODO
 
@@ -60,13 +58,15 @@ TODO
 
 ## Pre-requisites for building the distribution packages ##
 
+As well as the pre-requisites for running the source (see above), the
+following requirements must be met:
+
 * [PyInstaller](http://www.pyinstaller.org/)
 * [Inno Setup](http://www.jrsoftware.org/isinfo.php)
 
 ### Install using PIP ###
 
-PyInstaller can be installed using PIP; Inno Setup must be installed manually.
-
+_PyInstaller_ can be installed using PIP; _Inno Setup_ must be installed manually.
 ```
 $ python -m pip install pyinstaller
 ```
@@ -74,7 +74,6 @@ $ python -m pip install pyinstaller
 ## Creating the binary ##
 
 A helper batch-file is included to create the binary, which takes a while to run.
-
 ```
 $ win32-pyinstall.bat
 ```
