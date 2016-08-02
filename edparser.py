@@ -16,6 +16,10 @@ from watchdog import observers
 
 __all__ = [ 'parse_past_logs', 'EDNetlogMonitor' ]
 
+# https://regex101.com/r/xN9tK2/1
+REGEXP_PRE21 = r'\{(?P<Time>\d+:\d+:\d+)\} System:(?P<SysTag>\d+)\((?P<SystemName>.+)\) Body:(?P<Body>\d+) Pos:\((?P<Pos>.+)\) (?P<TravelMode>\w+)'
+REGEXP_POST21 = r'\{(?P<Time>\d+:\d+:\d+)\} System:\"(?P<SystemName>[^"]+)\" StarPos:\((?P<StarPos>[^)]+)\)ly(?:\s+Body:(?P<Body>\d+) RelPos:\((?P<Pos>[^)]+)\)km)?(?:\s+(?P<TravelMode>\w+))?'
+
 def _get_log_files(path, logfile_prefix):
     if not path:
         raise ValueError("path is empty or None")
@@ -84,8 +88,8 @@ def parse_past_logs(netlog_path, netlog_prefix, callback, args = (), kwargs = {}
     eq = EDEventQueue()
     eq.add_listener(callback, *args, **kwargs)
 
-    regex_pre21 = re.compile(r'\{(?P<Time>\d+:\d+:\d+)\} System:(?P<SysTag>\d+)\((?P<SystemName>.+)\) Body:(?P<Body>\d+) Pos:\((?P<Pos>.+)\) (?P<TravelMode>\w+)')
-    regex_post21 = re.compile(r'\{(?P<Time>\d+:\d+:\d+)\} System:\"(?P<SystemName>[^"]+)\" StarPos:\((?P<StarPos>[^)]+)\)ly (?:Body:(?P<Body>\d+) RelPos:\((?P<Pos>[^)]+)\)km )?(?P<TravelMode>\w+)')
+    regex_pre21 = re.compile(REGEXP_PRE21)
+    regex_post21 = re.compile(REGEXP_POST21)
 
     loglist = _get_log_files(netlog_path, netlog_prefix)
 
@@ -141,8 +145,8 @@ class EDNetlogMonitor(RegexMatchingEventHandler):
         self._logfilename = None
         self._logfile = None
         
-        self._regex_pre21 = re.compile(r'\{(?P<Time>\d+:\d+:\d+)\} System:(?P<SysTag>\d+)\((?P<SystemName>.+)\) Body:(?P<Body>\d+) Pos:\((?P<Pos>.+)\) (?P<TravelMode>\w+)')
-        self._regex_post21 = re.compile(r'\{(?P<Time>\d+:\d+:\d+)\} System:\"(?P<SystemName>[^"]+)\" StarPos:\((?P<StarPos>[^)]+)\)ly (?:Body:(?P<Body>\d+) RelPos:\((?P<Pos>[^)]+)\)km )?(?P<TravelMode>\w+)')
+        self._regex_pre21 = re.compile(REGEXP_PRE21)
+        self._regex_post21 = re.compile(REGEXP_POST21)
     
     def start(self, netlog_path):
         with self._lock:
