@@ -63,24 +63,24 @@ class _SystemLine(edevent.BaseEvent):
         if 'SystemName' in line:
             system = line['SystemName']
             
-            if 'StarPos' in line:
+            if line.get('StarPos') is not None:
                 star_pos = tuple(float(f) for f in line['StarPos'].split(","))
                 version = NETLOG_VERSION.VERSION_2_1
             else:
                 star_pos = None
                 version = NETLOG_VERSION.VERSION_2_0
             
-            if 'Body' in line:
+            if line.get('Body') is not None:
                 body = int(line['Body'])
             else:
                 body = 0
-                
-            if 'Pos' in line:
+            
+            if line.get('Pos') is not None:
                 pos = tuple(float(f) for f in line['Pos'].split(","))
             else:
                 pos = (0.0, 0.0, 0.0)
                 
-            if 'TravelMode' in line:
+            if line.get('TravelMode') is not None:
                 status = line['TravelMode']
                 
                 if status.startswith(str(NETLOG_SHIP_STATUS.NORMAL_FLIGHT)):
@@ -91,6 +91,8 @@ class _SystemLine(edevent.BaseEvent):
                     status = NETLOG_SHIP_STATUS.PROVING_GROUND
                 else:
                     status = NETLOG_SHIP_STATUS.UNKNOWN
+            else:
+                status = NETLOG_SHIP_STATUS.UNKNOWN
                     
             return cls(version,
                        line_time,
