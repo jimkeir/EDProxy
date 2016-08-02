@@ -1,6 +1,6 @@
 # Elite: Dangerous Netlog Proxy Server #
 
-Replicates the netLog entries (currently System line only) out to any registered listeners via TCP so that an application may run on other platforms. The proxy server will automatically update the E:D configuration to turn on verbose logging.
+Replicates the netLog entries (currently System line only) out to any registered listeners via TCP so that an application may run on other platforms.
 
 # Installation #
 ## Binary Download ##
