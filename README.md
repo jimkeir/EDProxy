@@ -15,7 +15,7 @@ Mac OSx: [DMG File](https://bitbucket.org/westokyo/edproxy/downloads/LATEST-maco
 * [watchdog](http://pythonhosted.org/watchdog/)
 * [Pillow](https://python-pillow.github.io/)
 * SendKeys
-** [Microsoft Visual C++ Compiler for Python 2.7](https://www.microsoft.com/en-us/download/details.aspx?id=44266)
+    + [Microsoft Visual C++ Compiler for Python 2.7](https://www.microsoft.com/en-us/download/details.aspx?id=44266)
 * ijson
 * Tornado
 
