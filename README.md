@@ -1,6 +1,6 @@
 # Elite: Dangerous Netlog Proxy Server #
 
-Replicates the netLog entries (currently System line only) out to any registered listeners via TCP so that an application may run on other platforms. The proxy server will automatically update the E:D configuration to turn on verbose logging.
+Replicates the netLog entries (currently System line only) out to any registered listeners via TCP so that an application may run on other platforms.
 
 # Installation #
 ## Binary Download ##
@@ -26,6 +26,10 @@ Mac OSx: [DMG File](https://bitbucket.org/westokyo/edproxy/downloads/LATEST-maco
 
 $ python -m pip install psutil watchdog Pillow Sendkeys tornado ijson
 ```
+
+## Contributing ##
+
+Please see the **CONTRIBUTING.md** file for more information.
 
 # Design #
 ## Feature Modules ##
