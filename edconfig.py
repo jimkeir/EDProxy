@@ -171,7 +171,7 @@ class EDConfig(object):
     
     @staticmethod
     def get_version():
-        return "2.3.1b1"
+        return "2.3.1"
     
     def get_config_version(self):
         return self._version
