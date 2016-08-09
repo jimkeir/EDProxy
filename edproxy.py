@@ -173,8 +173,12 @@ class EDProxyFrame(wx.Frame):
         elif self._edconfig.was_upgraded():
             message = "Edproxy has been successfully upgraded to version " + EDConfig.get_version() + "\n\n"
             message = message + "New to this release is:\n"
-            message = message + "- Support for the Elite: Engineers release.\n"
-            message = message + "- Support for new (x, y, z) parameters in the EDSM plugin."
+            message = message + "- Full support for Websocket interface!\n"
+            message = message + "- Support for using non-Verbose Logging provided from the 2.1 patch."
+            message = message + "- Fix defect handling initial EDSM database download due to duplicate entries in nightly."
+            message = message + "- No longer download EDSM distances, and only download systems with known coordinates."
+            message = message + "- Perform EDSM updates in the background rather than forced at startup."
+
             msg = wx.MessageDialog(parent = self,
                                    message = message,
                                    caption = "Upgrade to Version " + EDConfig.get_version(),
