@@ -75,8 +75,7 @@ class EDProxyFrame(wx.Frame):
         
         self._edconfig = edconfig.get_instance()
 
-        _thread = threading.Thread(target = self.__finish_init_thread)
-        _thread.start()
+        wx.CallLater(10, self.__finish_init_thread)
 
 #         if self._edconfig.get_start_minimized():
 #             print "hide"
@@ -98,6 +97,7 @@ class EDProxyFrame(wx.Frame):
         # end wxGlade
 
         self._lock = threading.Lock()
+        self._ui_conditional = threading.Condition(self._lock)
         self._client_list = list()
         
         self._netlog_parser = edparser.EDNetlogMonitor()
@@ -142,6 +142,18 @@ class EDProxyFrame(wx.Frame):
         self.Centre()
         # end wxGlade
 
+    def __ui_thread_caller(self, func, *args, **kwargs):
+        func(*args, **kwargs)
+
+        with self._lock:
+            self._ui_conditional.notify()
+    
+    def __run_on_ui_thread(self, func, *args, **kwargs):
+        wx.CallAfter(self.__ui_thread_caller, func, *args, **kwargs)
+
+        with self._lock:
+            self._ui_conditional.wait()
+        
     def __finish_init_thread(self):
         if self._edconfig.was_created():
             message = "Welcome to Edproxy!\n\n"
@@ -183,19 +195,19 @@ class EDProxyFrame(wx.Frame):
                 
                 for p in edutils.get_potential_log_dirs():
                     message = message + p + "\n"
-                    
+            
                 message = message + "\nSome common AppConfig directories are:\n"
-                
+        
                 for p in edutils.get_potential_appconfig_dirs():
                     message = message + p + "\n"
-                    
+            
                 msg = wx.MessageDialog(parent = self,
                                        message = message,
                                        caption = "Verbose Logging Setup Error",
                                        style = wx.OK | wx.ICON_EXCLAMATION)
                 msg.ShowModal()
                 msg.Destroy()
-            
+        
                 settings = edsettings.EDSettings(self, wx.ID_ANY, "Settings Configuration")
                 settings.ShowModal()
                 settings.Destroy()
@@ -211,7 +223,7 @@ class EDProxyFrame(wx.Frame):
             self._updater = edupdate.EDMacOSXUpdater(self, EDConfig.get_version())#, base_url="file:///Users/wes/src/pydev/edproxy/testbed")
         
         self.Bind(edupdate.EVT_UPGRADE_EVENT, self.__on_upgrade)
-    
+        
     def __edsm_on_progress(self, msg):
         self._edsm_progress_dialog.Pulse(newmsg = msg)
         
@@ -595,23 +607,23 @@ class LoggerWriter(object):
         
 if __name__ == "__main__":
     gettext.install("edproxy") # replace with the appropriate catalog name
-      
+    
     user_dir = os.path.join(edutils.get_user_dir(), ".edproxy")
     if not os.path.exists(user_dir):
         os.makedirs(user_dir)
- 
+        
     user_dir = os.path.join(user_dir, "edproxy.log")
-    logging.basicConfig(format = "%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s", filename = user_dir)
-  
+    # logging.basicConfig(format = "%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s", filename = user_dir)
+    
     root_log_handler = logging.handlers.RotatingFileHandler(user_dir, maxBytes=(2 * 1024 * 1024), backupCount=5)
     root_log_handler.setFormatter(logging.Formatter("%(asctime)s-%(levelname)s-%(filename)s-%(lineno)d    %(message)s"))
- 
+    
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
-#     root_logger.addHandler(root_log_handler)
+    root_logger.addHandler(root_log_handler)
 
     sys.stdout = LoggerWriter(root_logger, logging.INFO)
     sys.stderr = LoggerWriter(root_logger, logging.ERROR)
-        
+
     edproxy = EDProxyApp(0)
     edproxy.MainLoop()
