@@ -504,9 +504,7 @@ class EDProxyFrame(wx.Frame):
             edsm_db = edsmdb.get_instance()
             edsm_db.connect()
 
-            print "do edsm install?"
             if edsm_db.is_install_required():
-                print "yes sir!"
                 self._edsm_progress_dialog = wx.ProgressDialog("Synchronizing EDSM Database", "Synchronizing EDSM Database...", parent = self)
                 self._edsm_progress_dialog.SetSize((480, 103))
                 self._edsm_progress_dialog.Center()

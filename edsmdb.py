@@ -374,11 +374,18 @@ class EDSMDb(object):
                                 cursor.execute(update_sql, (x, y, z, _id))
                                 updated = True
                         else:
-                            cursor.execute(insert_sql, (_id, name, x, y, z))
+                            try:
+                                cursor.execute(insert_sql, (_id, name, x, y, z))
+                            except sqlite3.IntegrityError:
+                                pass
+
                             updated = True
                         
+                        if (count % 100000) == 0:
+                            self._dbconn.commit()
+
                     self._dbconn.commit()
-                    self._log.debug("Updated [%d] systems" % (count))
+                    self._log.info("Updated [%d] systems" % (count))
 
                 start_time = end_time
                 end_time = start_time + datetime.timedelta(days = 14)
@@ -460,11 +467,19 @@ class EDSMDb(object):
                             x = y = z = None
                     else:
                         x = y = z = None
-                        
-                    cursor.execute(sql, (_id, name, float(x), float(y), float(z)))
 
+                    try:
+                        cursor.execute(sql,
+                                       (_id, name, float(x), float(y), float(z)))
+                    except sqlite3.IntegrityError:
+                        pass
+
+                    if (count % 100000) == 0:
+                        self._dbconn.commit()
+                    
                 self._dbconn.commit()
-    
+                self._log.info("Initialzed EDSM Database with [%d] systems." % count)
+                
                 return self.__get_utc(days = -1)
         except sqlite3.Error, e:
             self._log.error("Systems: SQLite error %s:" % e.args[0])
