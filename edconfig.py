@@ -171,7 +171,7 @@ class EDConfig(object):
         return ""
     
     def __find_journal_path(self):
-        return 'C:\Users\Jim\Saved Games\Frontier Developments\Elite Dangerous'
+        return os.path.join(edutils.get_user_dir(),'Saved Games/Frontier Developments/Elite Dangerous')
 
     def __find_appconfig_path(self):
         potential_paths = edutils.get_potential_appconfig_dirs()
