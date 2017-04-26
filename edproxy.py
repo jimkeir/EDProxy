@@ -283,7 +283,7 @@ class EDProxyFrame(wx.Frame):
             self.__stop()
             
             # We will NEVER return from HERE!
-            event.get_updater().perform_update(event.get_upgrade_file_path())
+            event.get_updater().perform_update()
             
         event.Skip()
         

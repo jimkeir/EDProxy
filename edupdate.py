@@ -17,15 +17,11 @@ UpgradeEventType = wx.NewEventType()
 EVT_UPGRADE_EVENT = wx.PyEventBinder(UpgradeEventType, 1)
 
 class UpgradeEvent(wx.PyCommandEvent):
-    def __init__(self, upgrade_file_path, updater):
+    def __init__(self, updater):
         wx.PyCommandEvent.__init__(self, UpgradeEventType, wx.ID_ANY)
     
-        self._upgrade_file_path = upgrade_file_path
         self._updater = updater
         
-    def get_upgrade_file_path(self):
-        return self._upgrade_file_path
-    
     def get_updater(self):
         return self._updater
     
@@ -37,6 +33,7 @@ class EDUpdater(object):
         self.parent = parent
         self.latest_url = latest_url
         self.version = version
+        self._latest = ''
         
         self._lock = threading.Lock()
         self._conditional = threading.Event()
@@ -69,21 +66,18 @@ class EDUpdater(object):
             try:
                 with contextlib.closing(urllib2.urlopen(self.latest_url)) as response:
                     if response.getcode() == 200 or response.getcode() == None:
-                        latest = response.read()
+                        self._latest = response.read()
                         
-                        if latest:
-                            latest = latest.strip()
-                            path = urlparse.urlparse(latest).path
+                        if self._latest:
+                            self._latest = self._latest.strip()
+                            path = urlparse.urlparse(self._latest).path
                             path = os.path.basename(path)
                             
                             if path != self.version:
-                                tmpdir = tempfile.gettempdir()
-                                tmpdir = os.path.join(tmpdir, path)
-                                
-                                filename, _ = urllib.urlretrieve(latest, tmpdir)
-                                wx.PostEvent(self.parent, UpgradeEvent(filename, self))
+                                wx.PostEvent(self.parent, UpgradeEvent(self))
                     else:
                         self._log.error("Failed to get: [%s] with code [%d]", self.latest_url, response.getcode())
+
             except urllib2.URLError, e:
                 self._log.error("Failed to get URL [%s]", e)
                 
@@ -94,27 +88,37 @@ class EDUpdater(object):
 class EDWin32Updater(EDUpdater):
     def __init__(self, parent, version, base_url = "https://bitbucket.org/westokyo/edproxy/downloads"):
         filename = "edproxy-win32-" + version + ".exe"
-        url = urlparse.urljoin(base_url,
-                               urlparse.urlparse(base_url).path + "/LATEST-win32")
+        url = urlparse.urljoin(base_url, urlparse.urlparse(base_url).path + "/LATEST-win32")
         
         EDUpdater.__init__(self, parent, url, filename)
         
-    def perform_update(self, latest):
-        subprocess.Popen([latest], creationflags=0x00000008)
-        wx.PostEvent(self.parent, wx.CloseEvent(wxEVT_CLOSE_WINDOW))
-        
+    def perform_update(self):
+        try:
+            tmpdir = tempfile.gettempdir()
+            tmpdir = os.path.join(tmpdir, os.path.basename(self._latest))
+            filename, _ = urllib.urlretrieve(self._latest, tmpdir)
+
+            subprocess.Popen([filename], creationflags=0x00000008)
+            wx.PostEvent(self.parent, wx.CloseEvent(wxEVT_CLOSE_WINDOW))
+
+        except urllib2.URLError, e:
+            self._log.error("Failed to get URL [%s]", e)
+
 class EDMacOSXUpdater(EDUpdater):
     def __init__(self, parent, version, base_url = "https://bitbucket.org/westokyo/edproxy/downloads"):
         filename = "edproxy-macosx-" + version + ".dmg"
-        url = urlparse.urljoin(base_url,
-                               urlparse.urlparse(base_url).path + "/LATEST-macosx")
+        url = urlparse.urljoin(base_url, urlparse.urlparse(base_url).path + "/LATEST-macosx")
         EDUpdater.__init__(self, parent, url, filename)
         
-    def perform_update(self, latest):
+    def perform_update(self):
+        tmpdir = tempfile.gettempdir()
+        tmpdir = os.path.join(tmpdir, os.path.basename(self._latest))
+        filename, _ = urllib.urlretrieve(self._latest, tmpdir)
+
         mnt_path = tempfile.mkdtemp("edproxy_update")
         
         # Mount the .dmg filesystem
-        update_mount = ["/usr/bin/hdiutil", "attach", "-autoopen", "-mountpoint", mnt_path, latest]
+        update_mount = ["/usr/bin/hdiutil", "attach", "-autoopen", "-mountpoint", mnt_path, filename]
         subprocess.Popen(update_mount)
         
         wx.PostEvent(self.parent, wx.CloseEvent(wxEVT_CLOSE_WINDOW))
