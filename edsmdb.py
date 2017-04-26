@@ -140,6 +140,9 @@ class EDSMDb(object):
             self._first_time_install = False
     
     def start_background_update(self, onupdate = None):
+        if self._background_update_running:
+            return
+
         self._update_event.clear()
         self._background_update_running = True
         
@@ -148,6 +151,9 @@ class EDSMDb(object):
         _thread.start()
 
     def stop_background_update(self):
+        if not self._background_update_running:
+            return
+
         self._background_update_running = False
         self._update_event.set()
         

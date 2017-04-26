@@ -1,9 +1,11 @@
 import wx
+import edproxy
 import edconfig
 import edpicture
 import edutils
 import os
 import edsm
+import edsmdb
 
 format_selector = {
     0: edpicture.IMAGE_CONVERT_FORMAT.BMP,
@@ -30,6 +32,7 @@ class EDSettings(wx.Dialog):
         self._start_on_launch = wx.CheckBox(self, label = "Start proxy on Edproxy launch")
         self._start_on_startup = wx.CheckBox(self, label = "Start Edproxy on system startup")
         self._start_minimized = wx.CheckBox(self, label = "Start Edproxy minimized")
+        self._local_system_db = wx.CheckBox(self, label = "Maintain local system database")
 
         self._discovery_ttl = wx.TextCtrl(self) #, wx.ID_ANY, _(self._edconfig.get_netlog_path()))
         
@@ -66,7 +69,8 @@ class EDSettings(wx.Dialog):
         self._start_on_launch.SetValue(self._edconfig.get_edproxy_startup())
         self._start_on_startup.SetValue(self._edconfig.get_system_startup())
         self._start_minimized.SetValue(self._edconfig.get_start_minimized())
-        
+        self._local_system_db.SetValue(self._edconfig.get_local_system_db())
+
         self._start_on_startup.Disable()
         self._start_minimized.Disable()
         
@@ -126,6 +130,8 @@ class EDSettings(wx.Dialog):
         sizer1.Add(self._start_on_launch, 0, wx.EXPAND | wx.ALIGN_LEFT)
         sizer1.AddSpacer(5)
         sizer1.Add(self._start_minimized, 0, wx.EXPAND | wx.ALIGN_LEFT)
+        sizer1.AddSpacer(5)
+        sizer1.Add(self._local_system_db, 0, wx.EXPAND | wx.ALIGN_LEFT)
         # End General configuration settings
         
         # Start Discovery configuration
@@ -191,7 +197,8 @@ class EDSettings(wx.Dialog):
         self._edconfig.set_system_startup(self._start_on_startup.IsChecked())
         self._edconfig.set_edproxy_startup(self._start_on_launch.IsChecked())
         self._edconfig.set_start_minimized(self._start_minimized.IsChecked())
-        
+        self._edconfig.set_local_system_db(self._local_system_db.IsChecked())
+     
         self._edconfig.set_discovery_ttl(self._discovery_ttl.GetValue())
         
         self._edconfig.set_netlog_path(os.path.abspath(os.path.expanduser(self._netlog_path.GetValue())))

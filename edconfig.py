@@ -18,7 +18,7 @@ class EDConfig(object):
         self._inifile = os.path.join(self._eduser_dir, "edproxy.ini")
         self._inifile_deprecated = os.path.join(edutils.get_app_dir(), "edproxy.ini")
         
-        self._version = '3'
+        self._version = '4'
         
         self._timer = None
         self._cancel_time = None
@@ -37,6 +37,13 @@ class EDConfig(object):
             self._config_parser = ConfigParser.SafeConfigParser()
             self._config_parser.read(self._inifile)
             
+            self.add_config_section('Version')
+            self.add_config_section('General')
+            self.add_config_section('Discovery')
+            self.add_config_section('Netlog')
+            self.add_config_section('Image')
+            self.add_config_section('Journal')
+
             version = self._config_parser.get('Version', 'version')
             self.__upgrade(version, self._version)
         elif os.path.exists(self._inifile_deprecated):
@@ -54,8 +61,8 @@ class EDConfig(object):
         self._config_parser.set('Version', 'version', new_value)
 
         if old_value == '1':            
-            self._config_parser.add_section('Discovery')
-            self._config_parser.set('Discovery', 'ttl', '1')
+            self.add_config_section('Discovery')
+            self.set_discovery_ttl(self.get_discovery_ttl())
             self.__write_config()
 
             self._was_upgraded = True
@@ -73,43 +80,52 @@ class EDConfig(object):
                     
                     if (os.path.exists(os.path.join(config_path, "AppConfig.xml"))):
                         value = config_path
-                
-            self._config_parser.set('Netlog', 'appconfig_path', value)
+            
+            self.set_netlog_path(value)
             self.__write_config()
             
             self._was_upgraded = True
             
             old_value = '3'
 
+        if old_value == '3':
+            self.add_config_section('Journal')
+
+            self.set_journal_path(self.get_journal_path())
+            self.set_local_system_db(self.get_local_system_db())
+            self.__write_config()
+            
+            self._was_upgraded = True
+            
+            old_value = '4'
+
     def __create_default_config(self, legacy_parser = None):
             self._config_parser = ConfigParser.SafeConfigParser()
             
-            self._config_parser.add_section('Version')
-            self._config_parser.add_section('General')
-            self._config_parser.add_section('Discovery')
-            self._config_parser.add_section('Netlog')
-            self._config_parser.add_section('Image')
+            self.add_config_section('Version')
+            self.add_config_section('General')
+            self.add_config_section('Discovery')
+            self.add_config_section('Netlog')
+            self.add_config_section('Image')
+            self.add_config_section('Journal')
 
             self._config_parser.set('Version', 'version', self._version)
 
-            self._config_parser.set('General', 'system_startup', 'False')
-            self._config_parser.set('General', 'edproxy_startup', 'False')
-            self._config_parser.set('General', 'start_minimized', 'False')
+            self.set_system_startup(self.get_system_startup())
+            self.set_edproxy_startup(self.get_edproxy_startup())
+            self.set_start_minimized(self.get_start_minimized())
 
-            self._config_parser.set('Discovery', 'ttl', '1')
+            self.set_discovery_ttl(self.get_discovery_ttl())
             
-            if legacy_parser:
-                self._config_parser.set('Netlog', 'path', legacy_parser.get('Paths', 'netlog'))
-            else:
-                self._config_parser.set('Netlog', 'path', self.__find_netlog_path())
-
-            self._config_parser.set('Netlog', 'appconfig_path', self.__find_appconfig_path())
+            self.set_netlog_path(self.get_netlog_path())
+            self.set_journal_path(self.get_journal_path())
+            self.set_appconfig_path(self.get_appconfig_path())
             
-            self._config_parser.set('Image', 'path', '')
-            self._config_parser.set('Image', 'format', edpicture.IMAGE_CONVERT_FORMAT.BMP)
-            self._config_parser.set('Image', 'convert_space', '')
-            self._config_parser.set('Image', 'delete_after_convert', 'False')
-            self._config_parser.set('Image', 'name_replacement', '')
+            self.set_image_path(self.get_image_path())
+            self.set_image_format(self.get_image_format())
+            self.set_image_convert_space(self.get_image_convert_space())
+            self.set_image_delete_after_convert(self.get_image_delete_after_convert())
+            self.set_image_name_replacement(self.get_image_name_replacement())
 
             self.__write_config()
             
@@ -154,6 +170,9 @@ class EDConfig(object):
 
         return ""
     
+    def __find_journal_path(self):
+        return os.path.join(edutils.get_user_dir(),'Saved Games/Frontier Developments/Elite Dangerous')
+
     def __find_appconfig_path(self):
         potential_paths = edutils.get_potential_appconfig_dirs()
 
@@ -171,43 +190,94 @@ class EDConfig(object):
     
     @staticmethod
     def get_version():
-        return "2.3.2"
+        return "2.4"
     
     def get_config_version(self):
-        return self._version
+        try:
+            return self._version
+        except:
+            return '0'
     
     def get_system_startup(self):
-        return (self._config_parser.get('General', 'system_startup') == 'True')
+        try:
+            return (self._config_parser.get('General', 'system_startup') == 'True')
+        except:
+            return 'False'
     
     def get_edproxy_startup(self):
-        return (self._config_parser.get('General', 'edproxy_startup') == 'True')
+        try:
+            return (self._config_parser.get('General', 'edproxy_startup') == 'True')
+        except:
+            return 'False'
     
     def get_start_minimized(self):
-        return (self._config_parser.get('General', 'start_minimized') == 'True')
+        try:
+            return (self._config_parser.get('General', 'start_minimized') == 'True')
+        except:
+            return 'False'
         
+    def get_local_system_db(self):
+        try:
+            return (self._config_parser.get('General', 'local_system_database') == 'True')
+        except:
+            return 'False'
+       
     def get_discovery_ttl(self):
-        return int(self._config_parser.get('Discovery', 'ttl'))
+        try:
+           return int(self._config_parser.get('Discovery', 'ttl'))
+        except:
+            return 1
     
     def get_netlog_path(self):
-        return self._config_parser.get('Netlog', 'path')
+        try:
+            return self._config_parser.get('Netlog', 'path')
+        except:
+            if legacy_parser:
+                return legacy_parser.get('Paths', 'netlog')
+            else:
+                return self.__find_netlog_path()
+
+    def get_journal_path(self):
+        try:
+            return self._config_parser.get('Journal', 'path')
+        except:
+            return self.__find_journal_path()
     
     def get_appconfig_path(self):
-        return self._config_parser.get('Netlog', 'appconfig_path')
+        try:
+            return self._config_parser.get('Netlog', 'appconfig_path')
+        except:
+            return self.__find_appconfig_path()
     
     def get_image_path(self):
-        return self._config_parser.get('Image', 'path')
+        try:
+           return self._config_parser.get('Image', 'path')
+        except:
+            return ''
     
     def get_image_name_replacement(self):
-        return self._config_parser.get('Image', 'name_replacement')
+        try:
+           return self._config_parser.get('Image', 'name_replacement')
+        except:
+            return ''
     
     def get_image_format(self):
-        return self._config_parser.get('Image', 'format')
+        try:
+           return self._config_parser.get('Image', 'format')
+        except:
+            return edpicture.IMAGE_CONVERT_FORMAT.BMP
     
     def get_image_convert_space(self):
-        return self._config_parser.get('Image', 'convert_space')
+        try:
+           return self._config_parser.get('Image', 'convert_space')
+        except:
+            return ''
     
     def get_image_delete_after_convert(self):
-        return (self._config_parser.get('Image', 'delete_after_convert') == 'True')
+        try:
+           return (self._config_parser.get('Image', 'delete_after_convert') == 'True')
+        except:
+            return 'False'
     
     def set_system_startup(self, value):
         self._config_parser.set('General', 'system_startup', str(value))
@@ -221,13 +291,21 @@ class EDConfig(object):
         self._config_parser.set('General', 'start_minimized', str(value))
         self.__write_config()
         
+    def set_local_system_db(self, value):
+        self._config_parser.set('General', 'local_system_database', str(value))
+        self.__write_config()
+        
     def set_discovery_ttl(self, value):
         self._config_parser.set('Discovery', 'ttl', str(value))
 
     def set_netlog_path(self, path):
         self._config_parser.set('Netlog', 'path', path)
         self.__write_config()
-        
+
+    def set_journal_path(self, path):
+        self._config_parser.set('Journal', 'path', path)
+        self.__write_config()
+
     def set_appconfig_path(self, path):
         self._config_parser.set('Netlog', 'appconfig_path', path)
         self.__write_config()
@@ -251,6 +329,12 @@ class EDConfig(object):
     def set_image_delete_after_convert(self, value):
         self._config_parser.set('Image', 'delete_after_convert', str(value))
         self.__write_config()
+
+    def add_config_section(self, section):
+        try:
+            self._config_parser.add_section(section)
+        except(ConfigParser.DuplicateSectionError):
+            pass
 
 _config_singleton = EDConfig()
 def get_instance():

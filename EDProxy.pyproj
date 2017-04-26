@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{846b30d2-99c5-4572-9d27-a01aeccf43e0}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>edproxy.py</StartupFile>
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <InterpreterVersion />
+    <IsWindowsApplication>False</IsWindowsApplication>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="edicon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="edconfig.py" />
+    <Compile Include="edevent.py" />
+    <Compile Include="edicon.py" />
+    <Compile Include="edimport.py" />
+    <Compile Include="ednet.py" />
+    <Compile Include="edparser.py" />
+    <Compile Include="edpicture.py" />
+    <Compile Include="edproxy.py" />
+    <Compile Include="edsendkeys.py" />
+    <Compile Include="edsettings.py" />
+    <Compile Include="edsm.py" />
+    <Compile Include="edsmdb.py" />
+    <Compile Include="edupdate.py" />
+    <Compile Include="edutils.py" />
+    <Compile Include="elitedangerous.py" />
+    <Compile Include="fakeclient.py" />
+    <Compile Include="ijpython.py" />
+    <Compile Include="journalline.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="jsontest.py" />
+    <Compile Include="lru.py" />
+    <Compile Include="macosx-dmg-settings.py" />
+    <Compile Include="netlogline.py" />
+    <Compile Include="plugins.py" />
+    <Compile Include="wrapper.py" />
+  </ItemGroup>
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+</Project>
