@@ -13,6 +13,7 @@ import edevent
 import math
 import time
 import lru
+import wx
 
 class StarMapDbUpdatedEvent(edevent.BaseEvent):
     def __init__(self):
@@ -116,8 +117,15 @@ class EDSMDb(object):
     
     def connect(self):
         if not self._dbconn:
+            if (not os.path.exists(self._edproxy_db_filename)):
+                self.__do_create_db(self._edproxy_db_filename)
+
             self._dbconn = sqlite3.connect(self._edproxy_db_filename, check_same_thread=False)
-        
+       
+    def erase(self):
+        self.close()
+        os.remove(self._edproxy_db_filename)
+
     def close(self):
         self.stop_background_update()
         
@@ -457,7 +465,8 @@ class EDSMDb(object):
                     count = count + 1
                     if (count % 100) == 0:
                         if onprogress:
-                            onprogress("Create EDSM Database - Processed [%d] Systems..." % count)
+                            if not onprogress("Create EDSM Database - Processed [%d] Systems..." % count):
+                                break
                         
                     _id = int(system["id"])
                     name = system['name']
@@ -484,11 +493,19 @@ class EDSMDb(object):
                         self._dbconn.commit()
                     
                 self._dbconn.commit()
+
+                cursor.execute("ANALYZE")
+
                 self._log.info("Initialzed EDSM Database with [%d] systems." % count)
                 
                 return self.__get_utc(days = -1)
         except sqlite3.Error, e:
             self._log.error("Systems: SQLite error %s:" % e.args[0])
+        except Exception, e:
+            self._log.error("Systems: EDSM download error %s:" % e.message)
+
+            if onprogress:
+                onprogress("Error getting EDSM nightly database: " + e.message, True)
         finally:
             if cursor:
                 cursor.close()

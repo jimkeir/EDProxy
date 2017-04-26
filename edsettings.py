@@ -49,6 +49,8 @@ class EDSettings(wx.Dialog):
         self._image_format = wx.Choice(self, choices = [ edpicture.IMAGE_CONVERT_FORMAT.BMP, edpicture.IMAGE_CONVERT_FORMAT.PNG, edpicture.IMAGE_CONVERT_FORMAT.JPG ])
         self._image_replace = wx.Choice(self, choices = [ "Keep Space", "Underscore", "Hyphen", "Period" ])
 
+        self._wipe_database_button = wx.Button(self, wx.ID_ANY, _("Wipe Database"))
+
         self._netlog_path.SetMinSize((467, 29))
         self._appconfig_path.SetMinSize((467, 29))
         self._image_path.SetMinSize((467, 29))
@@ -57,7 +59,8 @@ class EDSettings(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self.__on_netlog_browse, self._netlog_browse_button)
         self.Bind(wx.EVT_BUTTON, self.__on_appconfig_browse, self._appconfig_browse_button)
         self.Bind(wx.EVT_BUTTON, self.__on_image_browse, self._image_browse_button)
-    
+        self.Bind(wx.EVT_BUTTON, self.__on_wipe_database, self._wipe_database_button)
+  
         # Add in 3rd Party Plugins
         self._plugin_list = list()
         self._plugin_list.append(edsm.EDSMSettings(self))
@@ -101,8 +104,9 @@ class EDSettings(wx.Dialog):
         sizer2 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Discovery Configuration"), wx.HORIZONTAL)
         sizer3 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Directory Configuration"), wx.VERTICAL)
         sizer4 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Image Configuration"), wx.VERTICAL)
-        sizer5 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Third-Party Plugins"), wx.VERTICAL)
-        
+        sizer5 = wx.StaticBoxSizer(wx.StaticBox(self, label = "EDSM Database Configuration"), wx.VERTICAL)
+        sizer6 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Third-Party Plugins"), wx.VERTICAL)
+   
         box1 = wx.BoxSizer(wx.VERTICAL)
         box2 = wx.BoxSizer(wx.HORIZONTAL)
         box3 = wx.BoxSizer(wx.HORIZONTAL) 
@@ -120,6 +124,8 @@ class EDSettings(wx.Dialog):
         box1.Add(sizer4, 0, wx.EXPAND)
         box1.AddSpacer(5)
         box1.Add(sizer5, 0, wx.EXPAND)
+        box1.AddSpacer(5)
+        box1.Add(sizer6, 0, wx.EXPAND)
         box1.Add(button_sizer, 0, wx.EXPAND | wx.ALIGN_RIGHT)
         box1.AddSpacer(2)
         # End Setup main layout
@@ -130,8 +136,6 @@ class EDSettings(wx.Dialog):
         sizer1.Add(self._start_on_launch, 0, wx.EXPAND | wx.ALIGN_LEFT)
         sizer1.AddSpacer(5)
         sizer1.Add(self._start_minimized, 0, wx.EXPAND | wx.ALIGN_LEFT)
-        sizer1.AddSpacer(5)
-        sizer1.Add(self._local_system_db, 0, wx.EXPAND | wx.ALIGN_LEFT)
         # End General configuration settings
         
         # Start Discovery configuration
@@ -183,9 +187,13 @@ class EDSettings(wx.Dialog):
         sizer4.Add(self._image_delete)
         # End Image configuration settings
         
+        sizer5.Add(self._local_system_db, 0, wx.EXPAND | wx.ALIGN_LEFT)
+        sizer5.AddSpacer(5)
+        sizer5.Add(self._wipe_database_button, flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL)
+
         # Start 3rd party plugin layout
         for v in self._plugin_list:
-            v.do_layout(sizer5)
+            v.do_layout(sizer6)
         # End 3rd party plugin layout
         
         self.SetSizer(box1)
@@ -254,4 +262,21 @@ class EDSettings(wx.Dialog):
             self._image_path.ChangeValue(dir_path.GetPath())
             
         dir_path.Destroy()
+        event.Skip()
+
+    def __on_wipe_database(self, event):
+        msg = wx.MessageDialog(parent = self,
+                        message = "Really wipe the EDSM database? Recreating will download more than 1Gb.",
+                        caption = "Warning",
+                        style = wx.CANCEL | wx.OK | wx.ICON_INFORMATION | wx.CENTRE)
+        
+        if msg.ShowModal() == wx.ID_OK:
+            # You asked for it.
+            self._edconfig.set_local_system_db(self._local_system_db.IsChecked())
+            self.Parent.on_stop(event)
+
+            edsmdb.get_instance().erase()
+
+            self.Parent.on_start(event)
+
         event.Skip()

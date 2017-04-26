@@ -229,8 +229,20 @@ class EDProxyFrame(wx.Frame):
         
         self.Bind(edupdate.EVT_UPGRADE_EVENT, self.__on_upgrade)
         
-    def __edsm_on_progress(self, msg):
-        self._edsm_progress_dialog.Pulse(newmsg = msg)
+    def __edsm_on_progress(self, msg, fatal = False):
+        if not fatal:
+            (keep_going, skip) = self._edsm_progress_dialog.Pulse(newmsg = msg)
+
+            return keep_going
+        else:
+            msg = wx.MessageDialog(parent = self._edsm_progress_dialog,
+                        message = msg,
+                        caption = "Error",
+                        style = wx.OK | wx.ICON_ERROR)
+            msg.ShowModal()
+            msg.Destroy()
+
+            return False
         
     def __edsm_on_update(self):
         try:
@@ -519,7 +531,8 @@ class EDProxyFrame(wx.Frame):
                 edsm_db.connect()
 
                 if edsm_db.is_install_required():
-                    self._edsm_progress_dialog = wx.ProgressDialog("Synchronizing EDSM Database", "Synchronizing EDSM Database...", parent = self)
+                    self._edsm_progress_dialog = wx.ProgressDialog("Synchronizing EDSM Database", "Synchronizing EDSM Database...", parent = self,
+                                                                   style = wx.PD_APP_MODAL | wx.PD_AUTO_HIDE | wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME)
                     self._edsm_progress_dialog.SetSize((480, 103))
                     self._edsm_progress_dialog.Center()
     
