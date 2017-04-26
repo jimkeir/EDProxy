@@ -18,7 +18,7 @@ class EDConfig(object):
         self._inifile = os.path.join(self._eduser_dir, "edproxy.ini")
         self._inifile_deprecated = os.path.join(edutils.get_app_dir(), "edproxy.ini")
         
-        self._version = '3'
+        self._version = '4'
         
         self._timer = None
         self._cancel_time = None
@@ -81,6 +81,21 @@ class EDConfig(object):
             
             old_value = '3'
 
+        if old_value == '3':
+            value = self.__find_journal_path()
+
+            try:
+                self._config_parser.add_section('Journal')
+            except ConfigParser.DuplicateSectionError:
+                pass
+
+            self._config_parser.set('Journal', 'path', value)
+            self.__write_config()
+            
+            self._was_upgraded = True
+            
+            old_value = '4'
+
     def __create_default_config(self, legacy_parser = None):
             self._config_parser = ConfigParser.SafeConfigParser()
             
@@ -89,6 +104,7 @@ class EDConfig(object):
             self._config_parser.add_section('Discovery')
             self._config_parser.add_section('Netlog')
             self._config_parser.add_section('Image')
+            self._config_parser.add_section('Journal')
 
             self._config_parser.set('Version', 'version', self._version)
 
@@ -105,6 +121,8 @@ class EDConfig(object):
 
             self._config_parser.set('Netlog', 'appconfig_path', self.__find_appconfig_path())
             
+            self._config_parser.set('Journal', 'path', __find_journal_path())
+
             self._config_parser.set('Image', 'path', '')
             self._config_parser.set('Image', 'format', edpicture.IMAGE_CONVERT_FORMAT.BMP)
             self._config_parser.set('Image', 'convert_space', '')
@@ -154,6 +172,9 @@ class EDConfig(object):
 
         return ""
     
+    def __find_journal_path(self):
+        return 'C:\Users\Jim\Saved Games\Frontier Developments\Elite Dangerous'
+
     def __find_appconfig_path(self):
         potential_paths = edutils.get_potential_appconfig_dirs()
 
@@ -171,7 +192,7 @@ class EDConfig(object):
     
     @staticmethod
     def get_version():
-        return "2.3.2"
+        return "2.4"
     
     def get_config_version(self):
         return self._version
@@ -190,6 +211,9 @@ class EDConfig(object):
     
     def get_netlog_path(self):
         return self._config_parser.get('Netlog', 'path')
+
+    def get_journal_path(self):
+        return self._config_parser.get('Journal', 'path')
     
     def get_appconfig_path(self):
         return self._config_parser.get('Netlog', 'appconfig_path')
@@ -227,7 +251,11 @@ class EDConfig(object):
     def set_netlog_path(self, path):
         self._config_parser.set('Netlog', 'path', path)
         self.__write_config()
-        
+
+    def set_journal_path(self, path):
+        self._config_parser.set('Journal', 'path', path)
+        self.__write_config()
+
     def set_appconfig_path(self, path):
         self._config_parser.set('Netlog', 'appconfig_path', path)
         self.__write_config()

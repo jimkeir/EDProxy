@@ -102,6 +102,9 @@ class EDProxyFrame(wx.Frame):
         
         self._netlog_parser = edparser.EDNetlogMonitor()
         self._netlog_parser.add_listener(self.__on_async_parser_event)
+
+        self._journal_parser = edparser.EDJournalMonitor()
+        self._journal_parser.add_listener(self.__on_async_parser_event)
         
         self._edpicture = edpicture.EDPictureMonitor()
         self._edpicture.add_listener(self.__on_new_image)        
@@ -173,11 +176,7 @@ class EDProxyFrame(wx.Frame):
         elif self._edconfig.was_upgraded():
             message = "Edproxy has been successfully upgraded to version " + EDConfig.get_version() + "\n\n"
             message = message + "New to this release is:\n"
-            message = message + "- Full support for Websocket interface!\n"
-            message = message + "- Support for using non-Verbose Logging provided from the 2.1 patch."
-            message = message + "- Fix defect handling initial EDSM database download due to duplicate entries in nightly."
-            message = message + "- No longer download EDSM distances, and only download systems with known coordinates."
-            message = message + "- Perform EDSM updates in the background rather than forced at startup."
+            message = message + "- Support for sending journal entries!\n"
 
             msg = wx.MessageDialog(parent = self,
                                    message = message,
@@ -190,6 +189,7 @@ class EDProxyFrame(wx.Frame):
         
         while not paths_are_good:
             netlog_path = self._edconfig.get_netlog_path()
+            journal_path = self._edconfig.get_journal_path()
             appconfig_path = self._edconfig.get_appconfig_path()
              
             if not netlog_path or not appconfig_path or not os.path.exists(netlog_path) or not os.path.exists(os.path.join(appconfig_path, "AppConfig.xml")):
@@ -338,6 +338,12 @@ class EDProxyFrame(wx.Frame):
                                      args = (client,),
                                      start_time = client.get_start_time())
 
+            edparser.parse_past_journals(self._edconfig.get_journal_path(),
+                            self._journal_parser.get_journal_prefix(),
+                            self.__on_sync_parser_event,
+                            args = (client,),
+                            start_time = client.get_start_time())
+
         event = edsmdb.StarMapDbUpdatedEvent()
         client.send(event)
 
@@ -485,6 +491,8 @@ class EDProxyFrame(wx.Frame):
 
     def on_start(self, event):  # wxGlade: EDProxyFrame.<event_handler>
         netlog_path = self._edconfig.get_netlog_path()
+        journal_path = self._edconfig.get_journal_path()
+
         appconfig_path = os.path.join(self._edconfig.get_appconfig_path(), "AppConfig.xml")
 #         appconfig_path = os.path.join(self._edconfig.get_appconfig_path(), "AppConfigLocal.xml")
         
@@ -522,6 +530,7 @@ class EDProxyFrame(wx.Frame):
 
             try:
                 self._netlog_parser.set_netlog_prefix(edutils.get_logfile_prefix(appconfig_path))
+                self._journal_parser.set_journal_prefix('Journal')
                 
                 if os.path.exists(self._edconfig.get_image_path()):
                     self._edpicture.set_image_path(self._edconfig.get_image_path())
@@ -533,6 +542,7 @@ class EDProxyFrame(wx.Frame):
                     self._edpicture.start()
                     
                 self._netlog_parser.start(netlog_path)
+                self._journal_parser.start(journal_path)
                 
                 self.log.debug("Starting up plugins.")
                 for value in self._plugin_list:
