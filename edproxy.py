@@ -531,15 +531,21 @@ class EDProxyFrame(wx.Frame):
                 edsm_db.connect()
 
                 if edsm_db.is_install_required():
-                    self._edsm_progress_dialog = wx.ProgressDialog("Synchronizing EDSM Database", "Synchronizing EDSM Database...", parent = self,
-                                                                   style = wx.PD_APP_MODAL | wx.PD_AUTO_HIDE | wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME)
-                    self._edsm_progress_dialog.SetSize((480, 103))
-                    self._edsm_progress_dialog.Center()
+                    msg = wx.MessageDialog(parent = self,
+                        message = "A local copy of the EDSM starsystem database will require downloading more than 1Gb of data and may not be necessary. Would you like to proceed?",
+                        caption = "EDSM Database Download",
+                        style = wx.CANCEL | wx.OK | wx.ICON_QUESTION | wx.CENTRE)
+        
+                    if msg.ShowModal() == wx.ID_OK:
+                        self._edsm_progress_dialog = wx.ProgressDialog("Synchronizing EDSM Database", "Synchronizing EDSM Database...", parent = self,
+                                                                       style = wx.PD_APP_MODAL | wx.PD_AUTO_HIDE | wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME)
+                        self._edsm_progress_dialog.SetSize((480, 103))
+                        self._edsm_progress_dialog.Center()
     
-                    edsm_db.install_edsmdb(onprogress=self.__edsm_on_progress)
+                        edsm_db.install_edsmdb(onprogress=self.__edsm_on_progress)
     
-                    self._edsm_progress_dialog.Destroy()
-                    wx.SafeYield()
+                        self._edsm_progress_dialog.Destroy()
+                        wx.SafeYield()
 
                 edsm_db.start_background_update(onupdate = self.__edsm_on_update)
 
