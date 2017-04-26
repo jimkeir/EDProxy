@@ -176,7 +176,8 @@ class EDProxyFrame(wx.Frame):
         elif self._edconfig.was_upgraded():
             message = "Edproxy has been successfully upgraded to version " + EDConfig.get_version() + "\n\n"
             message = message + "New to this release is:\n"
-            message = message + "- Support for sending journal entries!\n"
+            message = message + "- Support for sending journal entries\n"
+            message = message + "- Local copy of EDSM database is optional\n"
 
             msg = wx.MessageDialog(parent = self,
                                    message = message,
@@ -513,20 +514,21 @@ class EDProxyFrame(wx.Frame):
         else:
             self.start_button.Disable()
 
-            edsm_db = edsmdb.get_instance()
-            edsm_db.connect()
+            if self._edconfig.get_local_system_db():
+                edsm_db = edsmdb.get_instance()
+                edsm_db.connect()
 
-            if edsm_db.is_install_required():
-                self._edsm_progress_dialog = wx.ProgressDialog("Synchronizing EDSM Database", "Synchronizing EDSM Database...", parent = self)
-                self._edsm_progress_dialog.SetSize((480, 103))
-                self._edsm_progress_dialog.Center()
+                if edsm_db.is_install_required():
+                    self._edsm_progress_dialog = wx.ProgressDialog("Synchronizing EDSM Database", "Synchronizing EDSM Database...", parent = self)
+                    self._edsm_progress_dialog.SetSize((480, 103))
+                    self._edsm_progress_dialog.Center()
     
-                edsm_db.install_edsmdb(onprogress=self.__edsm_on_progress)
+                    edsm_db.install_edsmdb(onprogress=self.__edsm_on_progress)
     
-                self._edsm_progress_dialog.Destroy()
-                wx.SafeYield()
+                    self._edsm_progress_dialog.Destroy()
+                    wx.SafeYield()
 
-            edsm_db.start_background_update(onupdate = self.__edsm_on_update)
+                edsm_db.start_background_update(onupdate = self.__edsm_on_update)
 
             try:
                 self._netlog_parser.set_netlog_prefix(edutils.get_logfile_prefix(appconfig_path))
