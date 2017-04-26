@@ -501,11 +501,16 @@ class EDSMDb(object):
                 return self.__get_utc(days = -1)
         except sqlite3.Error, e:
             self._log.error("Systems: SQLite error %s:" % e.args[0])
+
+            if onprogress:
+                onprogress("Error storing an EDSM record: " + e.message, True)
+
         except Exception, e:
             self._log.error("Systems: EDSM download error %s:" % e.message)
 
             if onprogress:
                 onprogress("Error getting EDSM nightly database: " + e.message, True)
+
         finally:
             if cursor:
                 cursor.close()
