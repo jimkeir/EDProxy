@@ -296,7 +296,7 @@ class EDSettings(wx.Dialog):
 
     def __on_wipe_database(self, event):
         msg = wx.MessageDialog(parent = self,
-                        message = "Really wipe the EDSM database? Recreating will download more than 1Gb.",
+                        message = "Really wipe the EDSM database? Recreating will download more than 1GB.",
                         caption = "Warning",
                         style = wx.CANCEL | wx.OK | wx.ICON_INFORMATION | wx.CENTRE)
         

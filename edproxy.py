@@ -532,7 +532,7 @@ class EDProxyFrame(wx.Frame):
 
                 if edsm_db.is_install_required():
                     msg = wx.MessageDialog(parent = self,
-                        message = "A local copy of the EDSM starsystem database will require downloading more than 1Gb of data and may not be necessary. Would you like to proceed?",
+                        message = "A local copy of the EDSM starsystem database will require downloading more than 1GB of data and may not be necessary. Would you like to proceed?",
                         caption = "EDSM Database Download",
                         style = wx.CANCEL | wx.OK | wx.ICON_QUESTION | wx.CENTRE)
         
