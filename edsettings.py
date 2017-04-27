@@ -42,6 +42,9 @@ class EDSettings(wx.Dialog):
         self._appconfig_path = wx.TextCtrl(self) #, wx.ID_ANY, _(self._edconfig.get_netlog_path()))
         self._appconfig_browse_button = wx.Button(self, wx.ID_ANY, _("Browse"))
 
+        self._journal_path = wx.TextCtrl(self) #, wx.ID_ANY, _(self._edconfig.get_netlog_path()))
+        self._journal_browse_button = wx.Button(self, wx.ID_ANY, _("Browse"))
+
         self._image_path = wx.TextCtrl(self) #, wx.ID_ANY, _(self._edconfig.get_image_path()))
         self._image_browse_button = wx.Button(self, wx.ID_ANY, _("Browse"))
 
@@ -49,15 +52,20 @@ class EDSettings(wx.Dialog):
         self._image_format = wx.Choice(self, choices = [ edpicture.IMAGE_CONVERT_FORMAT.BMP, edpicture.IMAGE_CONVERT_FORMAT.PNG, edpicture.IMAGE_CONVERT_FORMAT.JPG ])
         self._image_replace = wx.Choice(self, choices = [ "Keep Space", "Underscore", "Hyphen", "Period" ])
 
+        self._wipe_database_button = wx.Button(self, wx.ID_ANY, _("Wipe Database"))
+
         self._netlog_path.SetMinSize((467, 29))
         self._appconfig_path.SetMinSize((467, 29))
         self._image_path.SetMinSize((467, 29))
-        
+        self._journal_path.SetMinSize((467, 29))
+
         self.Bind(wx.EVT_BUTTON, self.__on_ok, id=wx.ID_OK)
         self.Bind(wx.EVT_BUTTON, self.__on_netlog_browse, self._netlog_browse_button)
         self.Bind(wx.EVT_BUTTON, self.__on_appconfig_browse, self._appconfig_browse_button)
         self.Bind(wx.EVT_BUTTON, self.__on_image_browse, self._image_browse_button)
-    
+        self.Bind(wx.EVT_BUTTON, self.__on_journal_browse, self._journal_browse_button)
+        self.Bind(wx.EVT_BUTTON, self.__on_wipe_database, self._wipe_database_button)
+  
         # Add in 3rd Party Plugins
         self._plugin_list = list()
         self._plugin_list.append(edsm.EDSMSettings(self))
@@ -78,7 +86,8 @@ class EDSettings(wx.Dialog):
         
         self._netlog_path.ChangeValue(self._edconfig.get_netlog_path())
         self._appconfig_path.ChangeValue(self._edconfig.get_appconfig_path())
-        
+        self._journal_path.ChangeValue(self._edconfig.get_journal_path())
+   
         self._image_path.ChangeValue(self._edconfig.get_image_path())
         self._image_delete.SetValue(self._edconfig.get_image_delete_after_convert())
         
@@ -101,8 +110,9 @@ class EDSettings(wx.Dialog):
         sizer2 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Discovery Configuration"), wx.HORIZONTAL)
         sizer3 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Directory Configuration"), wx.VERTICAL)
         sizer4 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Image Configuration"), wx.VERTICAL)
-        sizer5 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Third-Party Plugins"), wx.VERTICAL)
-        
+        sizer5 = wx.StaticBoxSizer(wx.StaticBox(self, label = "EDSM Database Configuration"), wx.VERTICAL)
+        sizer6 = wx.StaticBoxSizer(wx.StaticBox(self, label = "Third-Party Plugins"), wx.VERTICAL)
+   
         box1 = wx.BoxSizer(wx.VERTICAL)
         box2 = wx.BoxSizer(wx.HORIZONTAL)
         box3 = wx.BoxSizer(wx.HORIZONTAL) 
@@ -120,6 +130,8 @@ class EDSettings(wx.Dialog):
         box1.Add(sizer4, 0, wx.EXPAND)
         box1.AddSpacer(5)
         box1.Add(sizer5, 0, wx.EXPAND)
+        box1.AddSpacer(5)
+        box1.Add(sizer6, 0, wx.EXPAND)
         box1.Add(button_sizer, 0, wx.EXPAND | wx.ALIGN_RIGHT)
         box1.AddSpacer(2)
         # End Setup main layout
@@ -130,8 +142,6 @@ class EDSettings(wx.Dialog):
         sizer1.Add(self._start_on_launch, 0, wx.EXPAND | wx.ALIGN_LEFT)
         sizer1.AddSpacer(5)
         sizer1.Add(self._start_minimized, 0, wx.EXPAND | wx.ALIGN_LEFT)
-        sizer1.AddSpacer(5)
-        sizer1.Add(self._local_system_db, 0, wx.EXPAND | wx.ALIGN_LEFT)
         # End General configuration settings
         
         # Start Discovery configuration
@@ -143,11 +153,14 @@ class EDSettings(wx.Dialog):
         # Start Netlog configuration settings
         dir_box1 = wx.BoxSizer(wx.HORIZONTAL)
         dir_box2 = wx.BoxSizer(wx.HORIZONTAL)
+        dir_box3 = wx.BoxSizer(wx.HORIZONTAL)
 
         sizer3.Add(dir_box1)
         sizer3.AddSpacer(5)
         sizer3.Add(dir_box2)
-        
+        sizer3.AddSpacer(5)
+        sizer3.Add(dir_box3)
+     
         dir_box1.Add(wx.StaticText(self, wx.ID_ANY, _("Netlog Path:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
         dir_box1.AddSpacer(2)
         dir_box1.Add(self._netlog_path, 1)
@@ -159,6 +172,12 @@ class EDSettings(wx.Dialog):
         dir_box2.Add(self._appconfig_path, 1)
         dir_box2.AddSpacer(5)
         dir_box2.Add(self._appconfig_browse_button, flag = wx.ALIGN_RIGHT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+
+        dir_box3.Add(wx.StaticText(self, wx.ID_ANY, _("Journal Path:"), style=wx.ST_NO_AUTORESIZE), flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+        dir_box3.AddSpacer(2)
+        dir_box3.Add(self._journal_path, 1)
+        dir_box3.AddSpacer(5)
+        dir_box3.Add(self._journal_browse_button, flag = wx.ALIGN_RIGHT | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
         # End Netlog configuration settings
         
         # Start Image configuration settings
@@ -183,9 +202,13 @@ class EDSettings(wx.Dialog):
         sizer4.Add(self._image_delete)
         # End Image configuration settings
         
+        sizer5.Add(self._local_system_db, 0, wx.EXPAND | wx.ALIGN_LEFT)
+        sizer5.AddSpacer(5)
+        sizer5.Add(self._wipe_database_button, flag = wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL)
+
         # Start 3rd party plugin layout
         for v in self._plugin_list:
-            v.do_layout(sizer5)
+            v.do_layout(sizer6)
         # End 3rd party plugin layout
         
         self.SetSizer(box1)
@@ -203,6 +226,7 @@ class EDSettings(wx.Dialog):
         
         self._edconfig.set_netlog_path(os.path.abspath(os.path.expanduser(self._netlog_path.GetValue())))
         self._edconfig.set_appconfig_path(os.path.abspath(os.path.expanduser(self._appconfig_path.GetValue())))
+        self._edconfig.set_journal_path(os.path.abspath(os.path.expanduser(self._journal_path.GetValue())))
 
         self._edconfig.set_image_path(os.path.abspath(os.path.expanduser(self._image_path.GetValue())))
         self._edconfig.set_image_delete_after_convert(self._image_delete.IsChecked())
@@ -242,6 +266,20 @@ class EDSettings(wx.Dialog):
         dir_path.Destroy()
         event.Skip()
     
+    def __on_journal_browse(self, event):
+        defpath = self._journal_path.GetValue()
+        
+        if len(defpath) == 0:
+            defpath = self._edconfig.default_journal_path()
+            
+        dir_path = wx.DirDialog(self, "Choose Journal Path", style = wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST, defaultPath = defpath)
+
+        if dir_path.ShowModal() == wx.ID_OK:
+            self._journal_path.ChangeValue(dir_path.GetPath())
+            
+        dir_path.Destroy()
+        event.Skip()
+    
     def __on_image_browse(self, event):
         defpath = self._image_path.GetValue()
         
@@ -254,4 +292,21 @@ class EDSettings(wx.Dialog):
             self._image_path.ChangeValue(dir_path.GetPath())
             
         dir_path.Destroy()
+        event.Skip()
+
+    def __on_wipe_database(self, event):
+        msg = wx.MessageDialog(parent = self,
+                        message = "Really wipe the EDSM database? Recreating will download more than 1GB.",
+                        caption = "Warning",
+                        style = wx.CANCEL | wx.OK | wx.ICON_INFORMATION | wx.CENTRE)
+        
+        if msg.ShowModal() == wx.ID_OK:
+            # You asked for it.
+            self._edconfig.set_local_system_db(self._local_system_db.IsChecked())
+            self.Parent.on_stop(event)
+
+            edsmdb.get_instance().erase()
+
+            self.Parent.on_start(event)
+
         event.Skip()
