@@ -583,7 +583,7 @@ class EDProxyFrame(wx.Frame):
 
 #                     self._import_menu.Enable(True)
                 self.stop_button.Enable()
-            except:
+            except Exception as ex:
                 self.log.error("There was an error starting the proxy.", exc_info = sys.exc_info())
                 
                 self.stop_button.Disable()
@@ -599,7 +599,7 @@ class EDProxyFrame(wx.Frame):
                 edsm_db.close()
                 
                 msg = wx.MessageDialog(parent = self,
-                                       message = "Error starting up proxy server. Super generic error huh!? Welp, not really going to do better right now. Lazy, lazy, lazy.",
+                                       message = "Error starting up proxy server: " + ex.message,
                                        caption = "Error starting proxy server",
                                        style = wx.OK | wx.ICON_ERROR)
                 msg.ShowModal()
