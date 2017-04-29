@@ -87,11 +87,11 @@ class EDDiscoveryMessageQuery(EDDiscoveryMessageBase):
         super(EDDiscoveryMessageQuery, self).__init__(DISCOVERY_SERVICE_TYPE.QUERY, service_name = service_name)
 
 class EDDiscoveryService():
-    def __init__(self, broadcast_addr, broadcast_port):
+    def __init__(self, multicast_addr, multicast_port):
         self.log = logging.getLogger("com.fussyware.edproxy")
         
-        self._broadcast_addr = broadcast_addr
-        self._broadcast_port = broadcast_port
+        self._multicast_addr = multicast_addr
+        self._multicast_port = multicast_port
 
         self._event_queue = edevent.EDEventQueue()
         self._lock = threading.Lock()
@@ -134,20 +134,26 @@ class EDDiscoveryService():
     def send(self, message):
         try:
             self.log.debug("Sending: [%s]", message)
-            self._sock.sendto(message.get_json(), (self._broadcast_addr, self._broadcast_port))
+            self._sock.sendto(message.get_json(), (self._multicast_addr, self._multicast_port))
+            self._sock.sendto(message.get_json(), ('<broadcast>', self._multicast_port))
         except Exception:
             self.log.error("Failed sending data.", exc_info = sys.exc_info())
         
     def __run(self):
-        group = socket.inet_aton(self._broadcast_addr)
+        group = socket.inet_aton(self._multicast_addr)
         mreq = struct.pack('4sL', group, socket.INADDR_ANY)
 
-        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self._sock.setblocking(0)
         self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        # Multicast and WiFi are not friends, so set this up for a specific query-response broadcast too.
+        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+        # Tell the OS about the multicast group membership.
         self._sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
         self._sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, struct.pack('b', edconfig.get_instance().get_discovery_ttl()))
-        self._sock.bind(('', self._broadcast_port))
+        self._sock.bind(('', self._multicast_port))
         self._sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
         self._lock.acquire()
