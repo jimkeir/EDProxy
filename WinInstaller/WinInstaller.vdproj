@@ -50,6 +50,14 @@
             "PrerequisitesLocation" = "2:1"
             "Url" = "8:"
             "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.5"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4.5 (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.5"
+                    }
+                }
             }
         }
         "Release"
@@ -196,7 +204,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:EDProxy"
         "ProductCode" = "8:{10197465-CCB9-466D-B7C9-EDB840854838}"
-        "PackageCode" = "8:{DC7D4226-7FF4-4386-960F-55284BE5BCC5}"
+        "PackageCode" = "8:{11E5EDC1-1036-4B04-8916-94BD56BBA0C5}"
         "UpgradeCode" = "8:{A759C9AA-76E1-4378-81B2-A4569CC77810}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
@@ -316,6 +324,20 @@
         }
         "Shortcut"
         {
+            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_13E9EAE27BAE468EA14DE9B5F1148487"
+            {
+            "Name" = "8:EDProxy"
+            "Arguments" = "8:"
+            "Description" = "8:"
+            "ShowCmd" = "3:1"
+            "IconIndex" = "3:0"
+            "Transitive" = "11:FALSE"
+            "Target" = "8:_92AE788CBE4442AEBD1F5B199F6ED1C1"
+            "Folder" = "8:_EDDEF1C7E3CD48B898DCB8E28995E27D"
+            "WorkingFolder" = "8:_D747F3CF78CC46DA8C0A7D53B5DCD641"
+            "Icon" = "8:_FC0117C23B0C4E179E210A4F8C002456"
+            "Feature" = "8:"
+            }
         }
         "UserInterface"
         {
