@@ -331,7 +331,7 @@ class EDProxyFrame(wx.Frame):
         self.Destroy()
         
     def __on_about_menu(self, event):
-        webbrowser.open('https://bitbucket.org/westokyo/edproxy', new=2)
+        webbrowser.open('https://bitbucket.org/jim_keir/edproxy', new=2)
 
     def __new_client_thread(self, client, addr):
         while not client.is_initialized() and client.is_running():
