@@ -61,13 +61,6 @@ class EDConfig(object):
     def __upgrade(self, old_value, new_value):
         self._config_parser.set('Version', 'version', new_value)
 
-        # Set a default update server if none exists.
-        try:
-            self._config_parser.get('General', 'update_server_url')
-        except:
-            self._config_parser.set('General', 'update_server_url', self.get_update_baseURL())
-            self.__write_config()
-
         if old_value == '1':            
             self.add_config_section('Discovery')
             self.set_discovery_ttl(self.get_discovery_ttl())
