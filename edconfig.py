@@ -213,7 +213,7 @@ class EDConfig(object):
 
             return serverURL
         except:
-            return 'https://bitbucket.org/westokyo/edproxy/downloads'
+            return 'https://bitbucket.org/jim_keir/edproxy/downloads'
 
     def get_edproxy_startup(self):
         try:
