@@ -26,6 +26,7 @@ import edpicture
 import netlogline
 import edimport
 import edupdate
+import webbrowser
 from edicon import edicon
 from edsm import EDSM
 from __builtin__ import range
@@ -48,6 +49,7 @@ class EDProxyFrame(wx.Frame):
         settings_menu = wx.Menu()
         self._import_menu = settings_menu.Append(wx.ID_ANY, "&Import\tCTRL+I")
         pref_menu = settings_menu.Append(wx.ID_PREFERENCES, "&Preferences\tCTRL+,", "Configure Edproxy Settings.")
+        about_menu = settings_menu.Append(wx.ID_ABOUT, "&About", "About Edproxy")
         exit_menu = settings_menu.Append(wx.ID_EXIT, "&Exit", "Exit Edproxy.")
         menu_bar.Append(settings_menu, "&File")
         self.SetMenuBar(menu_bar)
@@ -66,6 +68,7 @@ class EDProxyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.__on_import_menu, self._import_menu)
         self.Bind(wx.EVT_MENU, self.__on_pref_menu, pref_menu)
         self.Bind(wx.EVT_MENU, self.__on_exit_menu, exit_menu)
+        self.Bind(wx.EVT_MENU, self.__on_about_menu, about_menu)
         self.Bind(wx.EVT_BUTTON, self.on_start, self.start_button)
         self.Bind(wx.EVT_BUTTON, self.on_stop, self.stop_button)
         
@@ -327,6 +330,9 @@ class EDProxyFrame(wx.Frame):
         edsmdb.get_instance().close()
         self.Destroy()
         
+    def __on_about_menu(self, event):
+        webbrowser.open('https://bitbucket.org/westokyo/edproxy', new=2)
+
     def __new_client_thread(self, client, addr):
         while not client.is_initialized() and client.is_running():
             try:
