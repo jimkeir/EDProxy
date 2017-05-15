@@ -12,6 +12,7 @@ import subprocess
 from wx import wxEVT_CLOSE_WINDOW
 import sys
 import urllib
+import re
 
 UpgradeEventType = wx.NewEventType()
 EVT_UPGRADE_EVENT = wx.PyEventBinder(UpgradeEventType, 1)
@@ -73,7 +74,25 @@ class EDUpdater(object):
                             path = urlparse.urlparse(self._latest).path
                             path = os.path.basename(path)
                             
-                            if path != self.version:
+                            # Default to simply checking whether our assumed filename and the reported latest are identical:
+                            upgradeAvailable = (path != self.version)
+
+                            # Try to parse the incoming version string to be a bit smarter than a simple "not equal".
+                            regex_versionCode = re.compile(r'.*?-.*?-(?P<Major>\d+).(?P<Minor>\d+).(?P<Build>\d+)?')
+                            matchOurs = regex_versionCode.search(self.version)
+                            matchTheirs = regex_versionCode.search(path)
+                            if matchOurs and matchTheirs:
+                                try:
+                                    upgradeAvailable = (int(matchTheirs.group('Major')) > int(matchOurs.group('Major')))
+                                    if not upgradeAvailable:
+                                        upgradeAvailable = (int(matchTheirs.group('Minor')) > int(matchOurs.group('Minor')))
+                                    if not upgradeAvailable and matchTheirs.group('Build') and matchOurs.group('Build'):
+                                        upgradeAvailable = (int(matchTheirs.group('Build')) > int(matchOurs.group('Build')))
+                                except Exception, e:
+                                    self._log.error("Failed to parse version from [%s] and [%s] : %s", 
+                                                    self.version, path, e)
+
+                            if upgradeAvailable:
                                 wx.PostEvent(self.parent, UpgradeEvent(self))
                     else:
                         self._log.error("Failed to get: [%s] with code [%d]", self.latest_url, response.getcode())
