@@ -5,6 +5,7 @@ import edpicture
 import threading
 import datetime
 import logging
+import urlparse
 
 class EDConfig(object):
     def __init__(self):
@@ -59,6 +60,13 @@ class EDConfig(object):
 
     def __upgrade(self, old_value, new_value):
         self._config_parser.set('Version', 'version', new_value)
+
+        # Set a default update server if none exists.
+        try:
+            self._config_parser.get('General', 'update_server_url')
+        except:
+            self._config_parser.set('General', 'update_server_url', self.get_update_baseURL())
+            self.__write_config()
 
         if old_value == '1':            
             self.add_config_section('Discovery')
@@ -204,6 +212,16 @@ class EDConfig(object):
         except:
             return 'False'
     
+    def get_update_baseURL(self):
+        try:
+            serverURL = self._config_parser.get('General', 'update_server_url')
+            if not urlparse.urlparse(serverURL).scheme:
+                raise ValueException
+
+            return serverURL
+        except:
+            return 'https://bitbucket.org/westokyo/edproxy/downloads'
+
     def get_edproxy_startup(self):
         try:
             return (self._config_parser.get('General', 'edproxy_startup') == 'True')
