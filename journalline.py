@@ -37,9 +37,7 @@ class _JournalLine(edevent.BaseEvent):
             return None
 
     def _fill_json_dict(self, json_dict):
-        for majorkey, subdict in self._line_json.iteritems():
-            if not json_dict.has_key(majorkey):
-                json_dict[majorkey] = subdict
+        json_dict['Entry'] = self._line_json
 
     def __str__(self):
         return edevent.BaseEvent.__str__(self) + ", Event [" + self._event_type + "]"
