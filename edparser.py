@@ -443,8 +443,28 @@ def parse_past_journals(journal_path, journal_prefix, callback, args = (), kwarg
 
     if loglist:
         if start_time is None:
-            file_date, _ = loglist[0]
+            # Send all of the most recent file since the most recent game-start line if an explicit time isn't passed.
+            file_date, last_log_name = loglist[-1]
             start_time = file_date
+
+            logfile = open(last_log_name, "r")
+            prev_time = None
+            for line in iter(logfile):
+                line_json = json.loads(line)
+
+                if 'timestamp' in line_json and 'event' in line_json:
+                    try:
+                        if (line_json['event'] == 'LoadGame'):
+                            start_time = datetime.datetime.strptime(line_json['timestamp'], "%Y-%m-%dT%H:%M:%SZ")
+                    except ValueError:
+                        pass
+
+            logfile.close()
+
+        if start_time is None:
+            return
+
+        offset_start_time = start_time - datetime.timedelta(seconds = 3)
 
         for file_date, filename in loglist:
             file_date = file_date.date()
@@ -463,7 +483,13 @@ def parse_past_journals(journal_path, journal_prefix, callback, args = (), kwarg
                             _previous_time = line_time
                             parsed_line = JournalLineFactory.get_line(line_time, line_json)
 
-                            if parsed_line:
+                            # Rather annoyingly, "Cargo" and "Loadout" are sent *before* the "LoadGame" event...
+                            # They're practically certain to be within a few seconds before though, so give a little
+                            # leeway for 'Cargo' and 'Loadout' entries.
+                            # Also always send 'Fileheader' as a reset marker.
+                            if parsed_line and (line_json['event'] == 'Fileheader' or line_time >= start_time or 
+                                                ((line_json['event'] == 'Cargo' or line_json['event'] == 'Loadout')
+                                                 and line_time >= offset_start_time)):
                                 eq.post(parsed_line)
                         except ValueError:
                             pass

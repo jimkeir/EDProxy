@@ -357,11 +357,13 @@ class EDProxyFrame(wx.Frame):
                                      args = (client,),
                                      start_time = client.get_start_time())
 
-            edparser.parse_past_journals(self._edconfig.get_journal_path(),
-                            self._journal_parser.get_journal_prefix(),
-                            self.__on_sync_parser_event,
-                            args = (client,),
-                            start_time = client.get_start_time())
+        # The initial request for for "Now". Send the entirety of the most recent journal, because it's
+        # an accumulative dataset.
+        edparser.parse_past_journals(self._edconfig.get_journal_path(),
+                        self._journal_parser.get_journal_prefix(),
+                        self.__on_sync_parser_event,
+                        args = (client,),
+                        start_time = client.get_start_time())
 
         event = edsmdb.StarMapDbUpdatedEvent()
         client.send(event)
