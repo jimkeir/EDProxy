@@ -21,3 +21,4 @@ LATEST*
 /Release
 /WinInstaller/Release
 /InstallerPrep/Release
+*.user

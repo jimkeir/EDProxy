@@ -18,5 +18,8 @@
     <None Include="windows_pyinstaller.bat">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="RemoteBuildMac.bat">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

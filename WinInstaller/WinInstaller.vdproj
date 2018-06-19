@@ -77,7 +77,7 @@
         "InstallerBootstrapper" = "3:2"
             "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
             {
-            "Enabled" = "11:TRUE"
+            "Enabled" = "11:FALSE"
             "PromptEnabled" = "11:TRUE"
             "PrerequisitesLocation" = "2:1"
             "Url" = "8:"
@@ -204,7 +204,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:EDProxy"
         "ProductCode" = "8:{10197465-CCB9-466D-B7C9-EDB840854838}"
-        "PackageCode" = "8:{11E5EDC1-1036-4B04-8916-94BD56BBA0C5}"
+        "PackageCode" = "8:{C0DC8C2F-8A48-4E0F-946C-BADF1348382F}"
         "UpgradeCode" = "8:{A759C9AA-76E1-4378-81B2-A4569CC77810}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"

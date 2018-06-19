@@ -12,6 +12,7 @@ Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "WinInstaller", "WinInstalle
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C61707D7-7D50-4A03-9E9B-49473D809CF8}"
 	ProjectSection(SolutionItems) = preProject
+		macosx-pyinstall.sh = macosx-pyinstall.sh
 		WinInstaller\windows_pyinstaller.bat = WinInstaller\windows_pyinstaller.bat
 	EndProjectSection
 EndProject

@@ -113,6 +113,12 @@
     <PreBuildEvent>
       <Message>Make pyinstaller exe</Message>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>cd $(ProjectDir)
+.\RemoteBuildMac.bat</Command>
+      <Message>Remote Build for Mac</Message>
+    </PostBuildEvent>
+    <PostBuildEvent />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -132,8 +138,15 @@
     <PreBuildEvent>
       <Message>Make pyinstaller exe</Message>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>cd $(ProjectDir)
+.\RemoteBuildMac.bat</Command>
+      <Message>Remote Build for Mac</Message>
+    </PostBuildEvent>
+    <PostBuildEvent />
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include="RemoteBuildMac.bat" />
     <None Include="windows_pyinstaller.bat" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
