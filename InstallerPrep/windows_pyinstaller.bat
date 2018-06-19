@@ -17,7 +17,7 @@ if exist "%OUTPUTEXE%" (
 
 pyinstaller --clean --distpath .\Release --workpath "%TEMPDIR%" -y -w --icon=edicon.ico --onefile -n EDProxy edproxy.py || goto :error
 
-REM "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool" sign /i "Comodo" /v /d "EDProxy" /du http://www.lightroom-plugins.com/ /tr http://timestamp.digicert.com .\Release\EDProxy.exe || goto :error
+"C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool" sign /i "Comodo" /v /d "EDProxy" /du http://www.lightroom-plugins.com/ /tr http://timestamp.digicert.com .\Release\EDProxy.exe || goto :error
 
 rmdir /Q /S "%TEMPDIR%"
 
