@@ -51,4 +51,4 @@ if [ -e "$OUT_NAME" ]; then
     rm -f $OUT_NAME
 fi
 
-dmgbuild -s macosx-dmg-settings.py -D app=~/src/pydev/edproxy/dist/edproxy.app "Edproxy" $OUT_NAME
+dmgbuild -s macosx-dmg-settings.py -D app=./dist/edproxy.app "Edproxy" $OUT_NAME
