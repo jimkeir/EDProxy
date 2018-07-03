@@ -228,7 +228,7 @@ class EDProxyFrame(wx.Frame):
         if sys.platform == "win32":
             self._updater = edupdate.EDWin32Updater(self, EDConfig.get_version(), self._edconfig.get_update_baseURL())
         elif sys.platform == "darwin":
-            self._updater = edupdate.EDMacOSXUpdater(self, EDConfig.get_version(), self._edconfig.get_update_baseURL)
+            self._updater = edupdate.EDMacOSXUpdater(self, EDConfig.get_version(), self._edconfig.get_update_baseURL())
         
         self.Bind(edupdate.EVT_UPGRADE_EVENT, self.__on_upgrade)
         
@@ -331,7 +331,7 @@ class EDProxyFrame(wx.Frame):
         self.Destroy()
         
     def __on_about_menu(self, event):
-        webbrowser.open('https://bitbucket.org/westokyo/edproxy', new=2)
+        webbrowser.open('https://github.com/jimkeir/EDProxy', new=2)
 
     def __new_client_thread(self, client, addr):
         while not client.is_initialized() and client.is_running():
