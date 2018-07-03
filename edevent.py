@@ -2,6 +2,7 @@ import threading
 import time
 import logging
 import json
+import edconfig
 
 from Queue import Queue
 
@@ -28,6 +29,7 @@ class BaseEvent(object):
     def _get_json_header(self):
         ret = dict()
 
+        ret['Version'] = edconfig.EDConfig.get_version()
         ret['Date'] = self._time.strftime('%Y-%m-%d %H:%M:%S')
         ret['DateUtc'] = time.strftime('%Y-%m-%d %H:%M:%S', self.get_timeutc())
         ret['Type'] = str(self._type)

@@ -65,7 +65,7 @@ class EDDiscoveryMessageAnnounce(EDDiscoveryMessageBase):
     def __init__(self, service_name, ipv4, port, http_port = 8097):
         super(EDDiscoveryMessageAnnounce, self).__init__(DISCOVERY_SERVICE_TYPE.ANNOUNCE, service_name)
 
-        self.service_dict['version'] = EDConfig.get_version()
+        self.service_dict['Version'] = EDConfig.get_version()
         self.service_dict['ipv4'] = ipv4
         self.service_dict['port'] = port
         self.service_dict['http_port'] = http_port
