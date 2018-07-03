@@ -105,7 +105,7 @@ class EDUpdater(object):
             self._conditional.clear()
         
 class EDWin32Updater(EDUpdater):
-    def __init__(self, parent, version, base_url = "https://bitbucket.org/westokyo/edproxy/downloads"):
+    def __init__(self, parent, version, base_url = "https://github.com/jimkeir/EDProxy/releases/latest"):
         filename = "edproxy-win32-" + version + ".exe"
         url = urlparse.urljoin(base_url, urlparse.urlparse(base_url).path + "/LATEST-win32")
         
@@ -124,7 +124,7 @@ class EDWin32Updater(EDUpdater):
             self._log.error("Failed to get URL [%s]", e)
 
 class EDMacOSXUpdater(EDUpdater):
-    def __init__(self, parent, version, base_url = "https://bitbucket.org/westokyo/edproxy/downloads"):
+    def __init__(self, parent, version, base_url = "https://github.com/jimkeir/EDProxy/releases/latest"):
         filename = "edproxy-macosx-" + version + ".dmg"
         url = urlparse.urljoin(base_url, urlparse.urlparse(base_url).path + "/LATEST-macosx")
         EDUpdater.__init__(self, parent, url, filename)
