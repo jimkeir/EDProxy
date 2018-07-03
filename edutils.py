@@ -11,12 +11,12 @@ def get_potential_log_dirs():
 
     if sys.platform == "win32":
         potential_paths.append(os.path.join(home_dir, "AppData\\Local\\Frontier_Developments\\Products\\elite-dangerous-64\\Logs"))
-        potential_paths.append("C:\\Program Files (x86)\\Steam\\steamapps\\common\\Elite Dangerous\\Products\\elite-dangerous-64\\Log")
+        potential_paths.append("C:\\Program Files (x86)\\Steam\\steamapps\\common\\Elite Dangerous\\Products\\elite-dangerous-64\\Logs")
         potential_paths.append("C:\\Program Files (x86)\\Frontier\\Products\\elite-dangerous-64\\Logs")
         potential_paths.append("C:\\Program Files (x86)\\Frontier\\EDLaunch\\Products\\elite-dangerous-64\\Logs")
 
         potential_paths.append(os.path.join(home_dir, "AppData\\Local\\Frontier_Developments\\Products\\FORC-FDEV-D-1010\\Logs"))
-        potential_paths.append("C:\\Program Files (x86)\\Steam\\steamapps\\common\\Elite Dangerous\\Products\\FORC-FDEV-D-1010\\Log")
+        potential_paths.append("C:\\Program Files (x86)\\Steam\\steamapps\\common\\Elite Dangerous\\Products\\FORC-FDEV-D-1010\\Logs")
         potential_paths.append("C:\\Program Files (x86)\\Frontier\\Products\\FORC-FDEV-D-1010\\Logs")
         potential_paths.append("C:\\Program Files (x86)\\Frontier\\EDLaunch\\Products\\FORC-FDEV-D-1010\\Logs")
     elif sys.platform == "darwin":
