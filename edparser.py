@@ -20,7 +20,7 @@ __all__ = [ 'parse_past_logs', 'EDNetlogMonitor', 'EDJournalMonitor' ]
 
 # https://regex101.com/r/xN9tK2/1
 REGEXP_PRE21 = r'\{(?P<Time>\d+:\d+:\d+)\} System:(?P<SysTag>\d+)\((?P<SystemName>.+)\) Body:(?P<Body>\d+) Pos:\((?P<Pos>.+)\) (?P<TravelMode>\w+)'
-REGEXP_POST21 = r'\{(?P<Time>\d+:\d+:\d+)\} System:\"(?P<SystemName>[^"]+)\" StarPos:\((?P<StarPos>[^)]+)\)ly(?:\s+Body:(?P<Body>\d+) RelPos:\((?P<Pos>[^)]+)\)km)?(?:\s+(?P<TravelMode>\w+))?'
+REGEXP_POST21 = r'\{(?P<Time>\d+:\d+:\d+)[^}]*\} System:\"(?P<SystemName>[^"]+)\" StarPos:\((?P<StarPos>[^)]+)\)ly(?:\s+Body:(?P<Body>\d+) RelPos:\((?P<Pos>[^)]+)\)km)?(?:\s+(?P<TravelMode>\w+))?'
 REGEXP_JOURNAL = r'\{(?P<Time>\d+-\d+-\d+T\d+:\d+:\d+)'
 
 def _get_log_files(path, logfile_prefix):
