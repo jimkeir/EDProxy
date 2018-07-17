@@ -413,6 +413,7 @@ class EDJournalMonitor(RegexMatchingEventHandler):
                 if 'timestamp' in line_json and 'event' in line_json:
                     try:
                         line_time = datetime.datetime.strptime(line_json['timestamp'], "%Y-%m-%dT%H:%M:%SZ")
+                        line_time = datetime_utc_to_local(line_time)
                         _previous_time = line_time
                         parsed_line = JournalLineFactory.get_line(line_time, line_json)
 
@@ -427,6 +428,11 @@ class EDJournalMonitor(RegexMatchingEventHandler):
             self._logfile.close()
         except:
             self._log.exception("Failed reading from the logfile.")
+
+def datetime_utc_to_local(utc_datetime):
+    now_timestamp = time.time()
+    offset = datetime.datetime.fromtimestamp(now_timestamp) - datetime.datetime.utcfromtimestamp(now_timestamp)
+    return utc_datetime + offset
 
 def parse_past_journals(journal_path, journal_prefix, callback, args = (), kwargs = {}, start_time = None):
     if args is None:
@@ -456,6 +462,8 @@ def parse_past_journals(journal_path, journal_prefix, callback, args = (), kwarg
                     try:
                         if (line_json['event'] == 'LoadGame'):
                             start_time = datetime.datetime.strptime(line_json['timestamp'], "%Y-%m-%dT%H:%M:%SZ")
+                            start_time = datetime_utc_to_local(start_time)
+
                     except ValueError:
                         pass
 
@@ -479,6 +487,7 @@ def parse_past_journals(journal_path, journal_prefix, callback, args = (), kwarg
                     if 'timestamp' in line_json and 'event' in line_json:
                         try:
                             line_time = datetime.datetime.strptime(line_json['timestamp'], "%Y-%m-%dT%H:%M:%SZ")
+                            line_time = datetime_utc_to_local(line_time)
 
                             _previous_time = line_time
                             parsed_line = JournalLineFactory.get_line(line_time, line_json)
