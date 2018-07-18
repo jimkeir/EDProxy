@@ -2,6 +2,8 @@
 
 Replicates the netLog entries (currently System line only) out to any registered listeners via TCP so that an application may run on other platforms. Journal entries can also be sent in their entirety to applications that request them.
 
+The Journal entries were added specifically to support EVA (Elite Virtual Assistant for [iOS](https://itunes.apple.com/gb/app/eva/id1098763533?mt=8) and [Android](https://play.google.com/store/apps/details?id=com.lightroomplugins.eva&hl=en_GB)) but hopefully other tools will also make use of the new features.
+
 # Installation #
 ## Binary Downloads ##
 [Windows](https://github.com/jimkeir/EDProxy/releases)
@@ -269,8 +271,8 @@ Example:
 Example:
 ``` json
 {
-    "Type": "GetDistancesResult"
-    "DateUtc": "2015-06-29T19:25:21"
+    "Type": "GetDistancesResult",
+    "DateUtc": "2015-06-29T19:25:21",
     "Distances": [ { "sys1": "Sol", "sys2": "Kured", "dist": 123.45 }, { "sys1": "Kured", "sys2": "Marowalan", "dist": 8.12 } ]
 }
 ```
