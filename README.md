@@ -1,12 +1,12 @@
-# Elite: Dangerous Netlog Proxy Server #
+# Elite: Dangerous Netlog and Journal Proxy Server #
 
-Replicates the netLog entries (currently System line only) out to any registered listeners via TCP so that an application may run on other platforms.
+Replicates the netLog entries (currently System line only) out to any registered listeners via TCP so that an application may run on other platforms. Journal entries can also be sent in their entirety to applications that request them.
 
 # Installation #
-## Binary Download ##
-Windows: [32-bit](https://bitbucket.org/westokyo/edproxy/downloads/LATEST-win32)
+## Binary Downloads ##
+[Windows](https://github.com/jimkeir/EDProxy/releases)
 
-Mac OSx: [DMG File](https://bitbucket.org/westokyo/edproxy/downloads/LATEST-macosx)
+Mac: Currently no Mac build is available but this will be added.
 
 ## Prerequisites for Running Source##
 * [Python 2.7](https://www.python.org/download/releases/2.7/)
@@ -34,7 +34,8 @@ Please see the **CONTRIBUTING.md** file for more information.
 # Design #
 ## Feature Modules ##
 * Service Discovery
-* Elite: Dangerous Netlog Parser
+* Elite:Dangerous Netlog Parser
+* Elite:Dangerous Journal Parser
 * Image Acquisition
 * Network Connection Management
 
@@ -43,10 +44,13 @@ The discovery mechanism utilizes UDP multicasting to listen (port 45551), and tr
 
 Any application that wishes to discover a *service* may broadcast a **Query** command. The *query* may include an option service name. (Ex. *edproxy*) Any service that receives a query with no specified name, or a specified name that matches the service, must immediately send out an **Announce** message.
 
-### Elite: Dangerous Netlog Parser ###
+### Elite:Dangerous Netlog Parser ###
 The netlog parser reads in the Elite: Dangerous log file, breaks down each line, and events out the messages to any listeners. There are two ways the log file are read: 1) a single instance will open the log file and event out only the current entries being processed, and 2) All entries from a given date will be processed and sent out then wait for new incoming messages from the single instance. This allows for only one file descriptor to be open for the current up-to-date log, but still allow other clients to retrieve historical data.
 
 Currently the only log file line being fully parsed is the System tag lines. These lines contain the system name, number of bodies, ship position in the system, and ship status. Other lines may be supported in the future.
+
+### Elite:Dangerous Journal Parser ###
+This fulfils the same task as the Netlog parser, for the newer Journal files. Originally the netlogs were intended only as a log useful to the developers, so it contained relatively little information that was useful for tracking general events. The journals were added to provide a way for third-party developers to track the game's internal state in a much more comprehensive way. Applications reading the journals can keep track of your progress almost - but not entirely - accurately.
 
 ### Image Acquisition ###
 *edproxy* is capable of monitoring a directory for new image files and sending those files out as events. The image acquisition service monitors for new ".bmp" files, optionally changes the name to a human readable format, optionally converts to either ".png" or ".jpg", and finally optionally deletes the original. All options may be configured from within the *Preferences* dialog.
@@ -61,26 +65,28 @@ The image acquisition service runs its own private web server internally so that
 ### Announce ###
 ```
 {
-    "type": "Announce"
-    "name": "Service Name"
-    "ipv4": "IP Address"
-    "port": Port number
+    "type": "Announce",
+    "name": "Service Name",
+    "ipv4": "IP Address",
+    "port": Port number,
+    "Version": "Version Number"
 }
 ```
 
 Example:
 ``` json
 {
-    "type": "Announce"
-    "name": "edproxy"
-    "ipv4": "192.168.1.100"
-    "port": 45551
+    "type": "Announce",
+    "name": "edproxy",
+    "ipv4": "192.168.1.100",
+    "port": 45551,
+    "Version": "2.4"
 }
 ```
 ### Query ###
 ```
 {
-    "type": "Query"
+    "type": "Query",
     "name": "Service Name" (optional)
 }
 ```
@@ -88,8 +94,8 @@ Example:
 Example:
 ``` json
 {
-    "type": "Query"
-    "name": "edproxy"
+    "type": "Query",
+    "name": "edproxy",
 }
 ```
 
@@ -97,10 +103,10 @@ Example:
 ### Init Command ###
 ```
 {
-   "Type": "Init"
-   "DateUtc": "yyyy-mm-ddTHH:MM:SS"
-   "StartTime": "all" | "now" | "yyyy-mm-ddTHH:MM:SS" (local time)
-   "Register": [ "System" ]
+   "Type": "Init",
+   "DateUtc": "yyyy-mm-ddTHH:MM:SS",
+   "StartTime": "all" | "now" | "yyyy-mm-ddTHH:MM:SS" (local time),
+   "Register": [ "System" | "Journal" ],
    "Heartbeat": Integer (optional default: -1. Represents the number of seconds between heartbeats)
 }
 ```
@@ -108,10 +114,10 @@ Example:
 Example:
 ``` json
 {
-   "Type": "Init"
-   "DateUtc": "2015-06-29T19:25:21"
-   "StartTime": "2015-06-29T13:25:21"
-   "Register": [ "System" ]
+   "Type": "Init",
+   "DateUtc": "2015-06-29T19:25:21",
+   "StartTime": "2015-06-29T13:25:21",
+   "Register": [ "System", "Journal" ],
    "Heartbeat": 30
 }
 ```
@@ -119,8 +125,8 @@ Example:
 ### Heartbeat (Ping) Event ###
 ```
 {
-   "Type": "Heartbeat"
-   "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
+   "Type": "Heartbeat",
+   "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated),
    "DateUtc": "yyyy-mm-ddTHH:MM:SS"
 }
 ```
@@ -128,7 +134,7 @@ Example:
 Example:
 ``` json
 {
-   "Type": "Heartbeat"
+   "Type": "Heartbeat",
    "DateUtc": "2015-06-29T19:25:21"
 }
 ```
@@ -136,8 +142,8 @@ Example:
 ### Pong (Heartbeat Acknowledge) Event ###
 ```
 {
-   "Type": "Pong"
-   "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
+   "Type": "Pong",
+   "Date": "yyyy-mm-ddTHH:MM:SS", (local time) (Deprecated)
    "DateUtc": "yyyy-mm-ddTHH:MM:SS"
 }
 ```
@@ -145,7 +151,7 @@ Example:
 Example:
 ``` json
 {
-   "Type": "Pong"
+   "Type": "Pong",
    "DateUtc": "2015-06-29T19:25:21"
 }
 ```
@@ -153,12 +159,12 @@ Example:
 ### System Event ###
 ```
 {
-    "Type": "System"
-    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
-    "DateUtc": "yyyy-mm-ddTHH:MM:SS"
-    "System": "System name"
-    "Bodies": Number of Bodies known in System
-    "Position": [x, y, z] Coordinates of ship location in system
+    "Type": "System",
+    "Date": "yyyy-mm-ddTHH:MM:SS", (local time) (Deprecated)
+    "DateUtc": "yyyy-mm-ddTHH:MM:SS",
+    "System": "System name",
+    "Bodies": Number of Bodies known in System,
+    "Position": [x, y, z] Coordinates of ship location in system,
     "Status": Ship status [ "unknown" | "cruising" ]
 }
 ```
@@ -166,11 +172,11 @@ Example:
 Example:
 ``` json
 {
-    "Type": "System"
-    "DateUtc": "2015-06-29T19:25:21"
-    "System": "Sol"
-    "Bodies": 7
-    "Position": [ -1234.56, 1234.56, 8765.87 ]
+    "Type": "System",
+    "DateUtc": "2015-06-29T19:25:21",
+    "System": "Sol",
+    "Bodies": 7,
+    "Position": [ -1234.56, 1234.56, 8765.87 ],
     "Status": "cruising"
 }
 ```
@@ -178,9 +184,9 @@ Example:
 ### Image Event ###
 ```
 {
-    "Type": "Image"
-    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
-    "DateUtc": "yyyy-mm-ddTHH:MM:SS"
+    "Type": "Image",
+    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated),
+    "DateUtc": "yyyy-mm-ddTHH:MM:SS",
     "ImageUrl": "URL"
 }
 ```
@@ -188,8 +194,8 @@ Example:
 Example:
 ``` json
 {
-    "Type": "Image"
-    "DateUtc": "2015-06-29T19:25:21"
+    "Type": "Image",
+    "DateUtc": "2015-06-29T19:25:21",
     "System": "http://192.168.1.128:8097/Sol_2015-06-29_13-01-21.png"
 }
 ```
@@ -197,9 +203,9 @@ Example:
 ### Send Keys Event (Windows Only) ###
 ```
 {
-    "Type": "SendKeys"
-    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
-    "DateUtc": "yyyy-mm-ddTHH:MM:SS"
+    "Type": "SendKeys",
+    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated),
+    "DateUtc": "yyyy-mm-ddTHH:MM:SS",
     "Keys": "Keys to Event"
 }
 ```
@@ -207,8 +213,8 @@ Example:
 Example:
 ``` json
 {
-    "Type": "SendKeys"
-    "DateUtc": "2015-06-29T19:25:21"
+    "Type": "SendKeys",
+    "DateUtc": "2015-06-29T19:25:21",
     "Keys": "Sol"
 }
 ```
@@ -216,8 +222,8 @@ Example:
 ### Star Map Updated Event ###
 ```
 {
-    "Type": "StarMapUpdated"
-    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
+    "Type": "StarMapUpdated",
+    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated),
     "DateUtc": "yyyy-mm-ddTHH:MM:SS"
 }
 ```
@@ -225,7 +231,7 @@ Example:
 Example:
 ``` json
 {
-    "Type": "StarMapUpdated"
+    "Type": "StarMapUpdated",
     "DateUtc": "2015-06-29T19:25:21"
 }
 ```
@@ -233,9 +239,9 @@ Example:
 ### Get Distances Event ###
 ```
 {
-    "Type": "GetDistances"
-    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
-    "DateUtc": "yyyy-mm-ddTHH:MM:SS"
+    "Type": "GetDistances",
+    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated),
+    "DateUtc": "yyyy-mm-ddTHH:MM:SS",
     "Distances": [ { "sys1": "System Name", "sys2": "System Name" } ]
 }
 ```
@@ -243,9 +249,9 @@ Example:
 Example:
 ``` json
 {
-    "Type": "GetDistances"
-    "DateUtc": "2015-06-29T19:25:21"
-    "Distances": [ { "sys1": "Sol", "sys2: "Kured" }, { "sys1": "Kured", "sys2": "Marowalan" } ]
+    "Type": "GetDistances",
+    "DateUtc": "2015-06-29T19:25:21",
+    "Distances": [ { "sys1": "Sol", "sys2": "Kured" }, { "sys1": "Kured", "sys2": "Marowalan" } ]
 }
 ```
 
@@ -253,9 +259,9 @@ Example:
 ### Get Distances Result Event ###
 ```
 {
-    "Type": "GetDistancesResult"
-    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated)
-    "DateUtc": "yyyy-mm-ddTHH:MM:SS"
+    "Type": "GetDistancesResult",
+    "Date": "yyyy-mm-ddTHH:MM:SS" (local time) (Deprecated),
+    "DateUtc": "yyyy-mm-ddTHH:MM:SS",
     "Distances": [ { "sys1": "System Name", "sys2": "System Name", "dist": 123.45 } ]
 }
 ```
@@ -265,7 +271,7 @@ Example:
 {
     "Type": "GetDistancesResult"
     "DateUtc": "2015-06-29T19:25:21"
-    "Distances": [ { "sys1": "Sol", "sys2: "Kured", "dist": 123.45 }, { "sys1": "Kured", "sys2": "Marowalan", "dist": 8.12 } ]
+    "Distances": [ { "sys1": "Sol", "sys2": "Kured", "dist": 123.45 }, { "sys1": "Kured", "sys2": "Marowalan", "dist": 8.12 } ]
 }
 ```
 
