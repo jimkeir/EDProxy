@@ -38,7 +38,10 @@ def _get_log_files(path, logfile_prefix):
             try:
                 name = datetime.datetime.strptime(f.split(".")[1], "%y%m%d%H%M")
             except ValueError:
-                name = datetime.datetime.strptime(f.split(".")[1], "%y%m%d%H%M%S")
+                try:
+                    name = datetime.datetime.strptime(f.split(".")[1], "%y%m%d%H%M%S")
+                except ValueError:
+                    continue
 
             netlog_list.append((name, path + f))
 
