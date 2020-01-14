@@ -212,8 +212,10 @@ class EDProxyFrame(wx.Frame):
                 msg = wx.MessageDialog(parent = self,
                                        message = message,
                                        caption = "Verbose Logging Setup Error",
-                                       style = wx.OK | wx.ICON_EXCLAMATION)
-                msg.ShowModal()
+                                       style = wx.OK | wx.CANCEL | wx.ICON_EXCLAMATION)
+                if wx.ID_CANCEL == msg.ShowModal():
+                    break
+
                 msg.Destroy()
         
                 settings = edsettings.EDSettings(self, wx.ID_ANY, "Settings Configuration")
@@ -526,7 +528,7 @@ class EDProxyFrame(wx.Frame):
             msg.Destroy()
         elif not appconfig_path or not os.path.exists(appconfig_path):
             msg = wx.MessageDialog(parent = self,
-                                   message = "Error: Cannot find E:D configuration file!",
+                                   message = "Error: Cannot find E:D configuration file! Please configure EDProxy.",
                                    caption = "Error starting proxy server",
                                    style = wx.OK | wx.ICON_ERROR)
             msg.ShowModal()

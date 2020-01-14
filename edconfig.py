@@ -191,7 +191,7 @@ class EDConfig(object):
     
     @staticmethod
     def get_version():
-        return "2.4.2"
+        return "2.4.3"
     
     def get_config_version(self):
         try:
@@ -203,7 +203,7 @@ class EDConfig(object):
         try:
             return (self._config_parser.get('General', 'system_startup') == 'True')
         except:
-            return 'False'
+            return False
     
     def get_update_baseURL(self):
         try:
@@ -219,19 +219,19 @@ class EDConfig(object):
         try:
             return (self._config_parser.get('General', 'edproxy_startup') == 'True')
         except:
-            return 'False'
+            return False
     
     def get_start_minimized(self):
         try:
             return (self._config_parser.get('General', 'start_minimized') == 'True')
         except:
-            return 'False'
+            return False
         
     def get_local_system_db(self):
         try:
             return (self._config_parser.get('General', 'local_system_database') == 'True')
         except:
-            return 'False'
+            return False
        
     def get_discovery_ttl(self):
         try:
@@ -243,9 +243,9 @@ class EDConfig(object):
         try:
             return self._config_parser.get('Netlog', 'path')
         except:
-            if legacy_parser:
+            try:
                 return legacy_parser.get('Paths', 'netlog')
-            else:
+            except:
                 return self.__find_netlog_path()
 
     def get_journal_path(self):
@@ -288,7 +288,7 @@ class EDConfig(object):
         try:
            return (self._config_parser.get('Image', 'delete_after_convert') == 'True')
         except:
-            return 'False'
+            return False
     
     def set_system_startup(self, value):
         self._config_parser.set('General', 'system_startup', str(value))
