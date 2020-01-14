@@ -1,19 +1,19 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C61707D7-7D50-4A03-9E9B-49473D809CF8}"
+	ProjectSection(SolutionItems) = preProject
+		macosx-pyinstall.sh = macosx-pyinstall.sh
+		WinInstaller\windows_pyinstaller.bat = WinInstaller\windows_pyinstaller.bat
+	EndProjectSection
+EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "EDProxy", "EDProxy.pyproj", "{846B30D2-99C5-4572-9D27-A01AECCF43E0}"
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "WinInstaller", "WinInstaller\WinInstaller.vdproj", "{3BB8FB97-0E5C-4D71-91A9-CBD2FC95EB9B}"
 	ProjectSection(ProjectDependencies) = postProject
 		{D98E115E-F2EA-40A3-9D65-3AB5BD31B91F} = {D98E115E-F2EA-40A3-9D65-3AB5BD31B91F}
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C61707D7-7D50-4A03-9E9B-49473D809CF8}"
-	ProjectSection(SolutionItems) = preProject
-		macosx-pyinstall.sh = macosx-pyinstall.sh
-		WinInstaller\windows_pyinstaller.bat = WinInstaller\windows_pyinstaller.bat
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InstallerPrep", "InstallerPrep\InstallerPrep.vcxproj", "{D98E115E-F2EA-40A3-9D65-3AB5BD31B91F}"
@@ -57,5 +57,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D13BAFEB-7855-4D94-BD05-3F6D46E46F55}
 	EndGlobalSection
 EndGlobal

@@ -22,3 +22,6 @@ LATEST*
 /WinInstaller/Release
 /InstallerPrep/Release
 *.user
+/.vs/EDProxy/v16
+/Backup
+/InstallerPrep/Debug
