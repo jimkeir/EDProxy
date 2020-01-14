@@ -6,7 +6,6 @@ import decimal
 import re
 
 from ijson import common
-from ijson.compat import chr
 
 
 # BUFSIZE = 16 * 1024
@@ -85,7 +84,7 @@ def unescape(s):
         pos += 1
         esc = s[pos]
         if esc == 'u':
-            result += chr(int(s[pos + 1:pos + 5], 16))
+            result += unichr(int(s[pos + 1:pos + 5], 16))
             pos += 4
         elif esc == 'b':
             result += '\b'
